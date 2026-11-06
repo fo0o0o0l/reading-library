@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>TCP 协议学习笔记（自学 · 复习用）</title>
+<meta name="description" content="TCP 协议自学复习笔记：三次握手、四次挥手、可靠传输、流量控制、拥塞控制、报文段结构、UDP 对比与自测题。">
+<script>(function(){try{var t=localStorage.getItem('tcp-notes-theme');if(!t){t=window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+<style>
+:root{
+  --bg:#f3f5f8; --surface:#ffffff; --surface-2:#f7f9fb; --text:#1d2b3a; --muted:#5d6d7d;
+  --border:#dde5ec; --border-soft:#e9eef4; --accent:#2f628f; --accent-2:#37785f;
+  --accent-soft:#eaf1f8; --warm:#a8642f; --warm-soft:#fbf2e7; --teal-soft:#eaf4f1;
+  --code-bg:#f7f9fb; --code-border:#e2e9f0; --shadow:0 1px 2px rgba(20,45,70,.05); --aux-border:#ccd7e2;
+  --tk-com:#7f8d9b; --tk-str:#2f7a6f; --tk-opt:#a8642f; --tk-num:#7a5a9c; --tk-kw:#2f628f; --tk-lab:#8a7c5a;
+  --mono:"Sarasa Mono SC","Cascadia Mono","JetBrains Mono",Consolas,"DejaVu Sans Mono","Courier New",monospace;
+}
+[data-theme="dark"]{
+  --bg:#0f151b; --surface:#161e26; --surface-2:#1b242e; --text:#dbe4ec; --muted:#8fa0b0;
+  --border:#27313c; --border-soft:#212a34; --accent:#8ab8de; --accent-2:#6fc0a8;
+  --accent-soft:#1b2b39; --warm:#d9a35f; --warm-soft:#2a2318; --teal-soft:#152a26;
+  --code-bg:#131a22; --code-border:#25303b; --shadow:0 1px 2px rgba(0,0,0,.3); --aux-border:#3a4756;
+  --tk-com:#71808f; --tk-str:#7ecab6; --tk-opt:#d9a35f; --tk-num:#c1a3d8; --tk-kw:#8ab8de; --tk-lab:#b0a284;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;background:var(--bg);color:var(--text);
+  font-family:"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,-apple-system,sans-serif;
+  font-size:16px;line-height:1.85;-webkit-font-smoothing:antialiased;
+  transition:background-color .18s ease,color .18s ease;
+}
+#bar{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--accent),var(--accent-2));z-index:90;transition:width .1s linear}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+::selection{background:var(--accent-soft)}
+
+/* ---------- 侧栏 ---------- */
+#sidebar{
+  position:fixed;top:0;left:0;bottom:0;width:280px;background:var(--surface);
+  border-right:1px solid var(--border);overflow-y:auto;z-index:55;
+  scrollbar-width:thin;scrollbar-color:var(--border) transparent;
+}
+.side-inner{padding:28px 20px 36px}
+.brand{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.mark{width:38px;height:38px;flex:0 0 38px;border-radius:10px;background:var(--accent-soft);color:var(--accent);
+  display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:.5px}
+.brand h2{margin:0;font-size:16px;line-height:1.35;font-weight:700;letter-spacing:.2px;color:var(--text)}
+.brand p{margin:2px 0 0;font-size:11px;letter-spacing:1.6px;color:var(--muted);text-transform:uppercase}
+.side-meta{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0 20px;padding-bottom:18px;border-bottom:1px solid var(--border-soft)}
+.side-meta span{font-size:11.5px;color:var(--muted);background:var(--surface-2);border:1px solid var(--border-soft);border-radius:20px;padding:1px 9px}
+.side-title{font-size:11px;letter-spacing:2px;color:var(--muted);margin:0 0 10px;text-transform:uppercase}
+nav#toc{display:flex;flex-direction:column;gap:1px}
+.toc-item{display:flex;align-items:baseline;gap:9px;padding:7px 10px;border-radius:7px;border-left:3px solid transparent;color:var(--text);font-size:13.5px;line-height:1.5}
+.toc-item .toc-num{font-family:var(--mono);font-size:11.5px;color:var(--muted);width:20px;flex:0 0 20px;text-align:right}
+.toc-item:hover{background:var(--surface-2);text-decoration:none}
+.toc-item.active{background:var(--accent-soft);border-left-color:var(--accent);color:var(--accent);font-weight:600}
+.toc-item.active .toc-num{color:var(--accent)}
+.toc-item.section-active{background:var(--surface-2)}
+.toc-sub{display:flex;gap:9px;padding:3px 10px 3px 12px;border-left:3px solid transparent;color:var(--muted);font-size:12.5px;line-height:1.55}
+.toc-sub .toc-sub-num{font-family:var(--mono);font-size:11px;width:30px;flex:0 0 30px;text-align:right;opacity:.8}
+.toc-sub:hover{color:var(--accent);text-decoration:none;background:var(--surface-2)}
+.toc-sub.active{color:var(--accent);border-left-color:var(--accent-2);background:var(--accent-soft)}
+.side-foot{margin-top:22px;padding-top:18px;border-top:1px solid var(--border-soft);display:flex;flex-direction:column;gap:8px}
+.side-foot a{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--accent);padding:6px 8px;border-radius:6px;background:var(--surface-2)}
+.side-foot a:hover{background:var(--accent-soft);text-decoration:none}
+.side-foot em{font-style:normal;font-size:11px;color:var(--muted);line-height:1.6}
+
+/* ---------- 顶部移动栏 ---------- */
+.topbar{display:none;position:fixed;top:0;left:0;right:0;height:54px;background:color-mix(in srgb,var(--surface) 88%,transparent);
+  backdrop-filter:blur(10px);border-bottom:1px solid var(--border);z-index:70;align-items:center;justify-content:space-between;padding:0 14px}
+.topbar-title{font-size:14px;font-weight:600;letter-spacing:.3px}
+.tb-btn{display:inline-flex;align-items:center;gap:5px;height:32px;padding:0 10px;border-radius:8px;border:1px solid var(--border);
+  background:var(--surface);color:var(--text);font-size:12.5px;cursor:pointer}
+#backdrop{display:none;position:fixed;inset:0;background:rgba(8,15,22,.45);z-index:54}
+
+/* ---------- 主体 ---------- */
+main{margin-left:280px;padding:34px 36px 100px}
+.wrap{max-width:900px;margin:0 auto}
+.hero{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:34px 36px 30px;box-shadow:var(--shadow);margin-bottom:44px}
+.eyebrow{font-size:11px;letter-spacing:2.4px;color:var(--accent);text-transform:uppercase;margin:0 0 10px;font-weight:600}
+.hero h1{margin:0;font-size:clamp(28px,3.4vw,40px);line-height:1.3;letter-spacing:-.3px;font-weight:700}
+.hero-sub{margin:8px 0 0;color:var(--muted);font-size:14px}
+.pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
+.pill{font-size:11.5px;color:var(--muted);background:var(--surface-2);border:1px solid var(--border-soft);border-radius:20px;padding:2px 10px}
+.pill b{color:var(--text);font-weight:600}
+.hero-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:22px}
+.act{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 13px;border-radius:9px;border:1px solid var(--border);
+  background:var(--surface-2);color:var(--text);font-size:12.5px;cursor:pointer;transition:.15s}
+.act:hover{border-color:var(--accent);color:var(--accent);text-decoration:none}
+.act svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.6}
+
+article{font-size:16px}
+article p{margin:14px 0;color:var(--text)}
+article p strong,article li strong{color:var(--text);font-weight:600}
+h2{font-size:23px;line-height:1.45;font-weight:700;margin:52px 0 18px;padding-top:20px;border-top:1px solid var(--border);
+  letter-spacing:.2px;scroll-margin-top:24px}
+h2:first-of-type{border-top:0;padding-top:0;margin-top:0}
+h3{font-size:17px;line-height:1.5;margin:30px 0 10px;font-weight:600;color:var(--text);scroll-margin-top:24px;display:flex;align-items:baseline;gap:8px}
+h3::before{content:"";width:2px;height:13px;background:var(--accent);border-radius:2px;flex:0 0 2px;transform:translateY(-1px)}
+.anchor-link{font-family:var(--mono);font-size:11px;color:var(--muted);opacity:.55;text-decoration:none;font-weight:400}
+.anchor-link:hover{opacity:1;color:var(--accent)}
+
+ul,ol{margin:12px 0;padding-left:22px}
+li{margin:7px 0;color:var(--text)}
+ul li::marker{color:var(--accent)}
+ol li::marker{color:var(--accent);font-family:var(--mono);font-size:.88em}
+ul ul{margin:4px 0}
+.ic{font-family:var(--mono);font-size:.9em;background:var(--surface-2);border:1px solid var(--border-soft);border-radius:4px;
+  padding:.08em .34em;color:var(--accent);white-space:nowrap}
+
+/* ---------- 代码块 ---------- */
+.codeblock{border:1px solid var(--code-border);border-radius:10px;overflow:hidden;background:var(--code-bg);margin:18px 0;box-shadow:var(--shadow)}
+.cb-head{display:flex;align-items:center;gap:10px;padding:7px 12px;background:var(--surface-2);border-bottom:1px solid var(--border-soft)}
+.cb-lang{font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);font-weight:600}
+.cb-hint{display:none;font-size:11px;color:var(--muted);border-left:1px solid var(--border);padding-left:10px}
+.codeblock.scrollable .cb-hint{display:inline}
+.copy{margin-left:auto;font-size:11.5px;color:var(--muted);background:transparent;border:1px solid var(--border);border-radius:6px;
+  padding:2px 10px;cursor:pointer;transition:.15s;font-family:inherit}
+.copy:hover{color:var(--accent);border-color:var(--accent)}
+.copy.done{color:var(--accent-2);border-color:var(--accent-2)}
+pre{margin:0;padding:16px 16px;overflow-x:auto;background:transparent}
+pre code{font-family:var(--mono);font-size:13px;line-height:1.62;display:block;color:var(--text)}
+pre.ascii{white-space:pre;overflow-x:auto;overscroll-behavior-x:contain}
+pre.ascii code{white-space:pre;font-size:13px;line-height:1.55}
+.tk-com{color:var(--tk-com);font-style:italic}
+.tk-str{color:var(--tk-str)}
+.tk-opt{color:var(--tk-opt)}
+.tk-num{color:var(--tk-num)}
+.tk-kw{color:var(--tk-kw);font-weight:600}
+.tk-lab{color:var(--tk-lab)}
+.tk-arrow{color:var(--tk-opt)}
+
+/* ---------- 表格 ---------- */
+.table-wrap{overflow-x:auto;margin:18px 0;border:1px solid var(--border);border-radius:10px;background:var(--surface);box-shadow:var(--shadow)}
+table{border-collapse:collapse;width:100%;min-width:600px;font-size:14px;line-height:1.65}
+th{background:var(--accent-soft);color:var(--text);font-weight:600;text-align:left;white-space:nowrap}
+th,td{padding:9px 13px;border-bottom:1px solid var(--border-soft);vertical-align:top}
+th:not(:last-child),td:not(:last-child){border-right:1px solid var(--border-soft)}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:nth-child(even){background:var(--surface-2)}
+td code{font-family:var(--mono);font-size:12.5px;display:inline;background:transparent;color:var(--accent)}
+
+/* ---------- 引用 / 校正 ---------- */
+.callout{margin:20px 0;padding:14px 16px 14px 18px;border-radius:8px;border-left:3px solid var(--accent-2);background:var(--teal-soft)}
+.callout.correction{border-left-color:var(--warm);background:var(--warm-soft)}
+.callout-tag{display:block;font-size:10.5px;letter-spacing:2px;color:var(--accent-2);margin-bottom:4px;font-weight:700}
+.callout.correction .callout-tag{color:var(--warm)}
+.callout-body p{margin:6px 0;font-size:14.5px;line-height:1.75}
+.callout-body ul{margin:6px 0;padding-left:20px}
+.callout-body li{font-size:14.5px;margin:4px 0}
+.callout-body .ic{background:color-mix(in srgb,var(--surface) 60%,transparent);border-color:transparent}
+
+/* ------------- 目录内联 ------------- */
+#s1 ul{columns:2;column-gap:30px;padding-left:0;list-style:none;margin-top:8px}
+#s1 li{margin:3px 0;break-inside:avoid}
+#s1 li::marker{content:""}
+#s1 a{display:block;font-size:14px;padding:4px 8px;border-radius:6px}
+#s1 a:hover{background:var(--accent-soft);text-decoration:none}
+@media(max-width:640px){#s1 ul{columns:1}}
+
+/* ------------- 返回顶部 ------------- */
+#toTop{position:fixed;right:24px;bottom:24px;width:42px;height:42px;border-radius:50%;border:1px solid var(--border);
+  background:var(--surface);color:var(--accent);cursor:pointer;display:flex;align-items:center;justify-content:center;
+  box-shadow:0 4px 14px rgba(20,45,70,.14);opacity:0;visibility:hidden;transform:translateY(8px);transition:.2s;z-index:60}
+#toTop.show{opacity:1;visibility:visible;transform:none}
+#toTop svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2}
+
+/* ------------- 返回资料目录 ------------- */
+.topbar-back{display:inline-flex;align-items:center;height:32px;padding:0 9px;border-radius:8px;border:1px solid var(--border);
+  background:var(--surface);color:var(--accent);font-size:12.5px;text-decoration:none;white-space:nowrap}
+.topbar-back:hover{background:var(--accent-soft);text-decoration:none}
+.back-link{display:inline-flex;align-items:center;gap:5px;margin-bottom:18px;font-size:12.5px;color:var(--accent);
+  padding:5px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface-2)}
+.back-link:hover{background:var(--accent-soft);text-decoration:none}
+.page-foot{margin:40px 0 0;padding-top:22px;border-top:1px solid var(--border);display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+.page-foot a{display:inline-flex;align-items:center;gap:6px;font-size:13.5px;padding:8px 14px;border-radius:9px;
+  border:1px solid var(--border);background:var(--surface);color:var(--text)}
+.page-foot a:hover{border-color:var(--accent);color:var(--accent);text-decoration:none}
+.page-foot em{font-style:normal;font-size:12px;color:var(--muted);line-height:1.6}
+@media(max-width:480px){.topbar-title{display:none}.topbar .theme-label{display:none}.topbar .tb-btn,.topbar-back{padding:0 8px}}
+
+/* ------------- 补充内容卡片（与原文区分） ------------- */
+.aux{position:relative;margin:18px 0;padding:12px 15px;border:1px dashed var(--aux-border);border-radius:10px;background:color-mix(in srgb,var(--surface) 45%,transparent)}
+.aux-tag{display:inline-block;font-size:10px;letter-spacing:1.6px;color:var(--accent-2);background:var(--teal-soft);
+  border-radius:3px;padding:1px 7px;margin-bottom:5px;font-weight:600}
+.aux.brief{margin:14px 0 8px;border-left:3px solid var(--accent-2);border-top:0;border-right:0;border-bottom:0;background:transparent;padding:9px 14px}
+.aux.remember{margin:20px 0 4px;border-left:3px solid var(--accent);border-top:0;border-right:0;border-bottom:0;background:transparent;padding:9px 14px}
+.aux p{margin:2px 0;font-size:14.5px;line-height:1.75;color:var(--text)}
+.aux-note{font-size:12.5px!important;color:var(--muted)!important;margin-top:8px!important}
+.flow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:12px 0 4px}
+.flow-box{flex:1 1 150px;min-width:145px;border:1px solid var(--border);background:var(--surface);border-radius:8px;padding:8px 11px}
+.flow-box b{display:block;font-family:var(--mono);font-size:14px;color:var(--accent);font-weight:600}
+.flow-box.out b{color:var(--accent-2)}
+.flow-box span{font-size:11.5px;color:var(--muted);line-height:1.5;display:block;margin-top:1px}
+.flow-op{font-family:var(--mono);font-size:11px;color:var(--muted);border:1px solid var(--border);border-radius:20px;padding:1px 8px}
+.flow-arrow{color:var(--muted);font-size:15px}
+.diff-row{display:flex;gap:12px;padding:7px 0;border-top:1px dashed var(--border-soft);align-items:baseline}
+.diff-row:first-of-type{border-top:0}
+.diff-row b{flex:0 0 176px;font-family:var(--mono);font-size:12px;color:var(--warm);font-weight:600;line-height:1.6}
+.diff-row span{flex:1;font-size:13.5px;line-height:1.7}
+.aux ol{margin:7px 0 0;padding-left:20px}
+.aux ol li{font-size:13.5px;margin:5px 0;line-height:1.75}
+.aux .ic{background:var(--surface);white-space:normal;word-break:break-all}
+.aux li code{font-family:var(--mono);font-size:12px;background:var(--surface);border:1px solid var(--border-soft);
+  border-radius:4px;padding:.08em .34em;white-space:normal;word-break:break-all}
+.quiz .q{border-top:1px dashed var(--border-soft);padding-top:9px;margin-top:10px}
+.q-t{margin:0 0 7px!important;font-size:14px;line-height:1.7}
+.reveal{font-size:11.5px;font-family:inherit;color:var(--accent);background:var(--surface);border:1px solid var(--border);
+  border-radius:6px;padding:2px 11px;cursor:pointer}
+.reveal:hover{border-color:var(--accent)}
+.ans{display:none;margin-top:8px;font-size:13.5px;line-height:1.72;background:var(--surface);border-left:2px solid var(--accent-2);
+  border-radius:0 6px 6px 0;padding:8px 11px;color:var(--text)}
+.q.open .ans{display:block}
+.abbr,.term{text-decoration:underline dotted var(--muted);text-underline-offset:3px;cursor:help}
+
+/* ------------- 响应式 ------------- */
+@media(max-width:1040px){
+  #sidebar{transform:translateX(-100%);transition:transform .24s ease;box-shadow:0 0 30px rgba(0,0,0,.14)}
+  body.nav-open #sidebar{transform:none}
+  body.nav-open #backdrop{display:block}
+  .topbar{display:flex}
+  main{margin-left:0;padding:70px 18px 80px}
+  .hero{padding:26px 22px;border-radius:14px}
+  h2,h3{scroll-margin-top:70px}
+  .wrap{max-width:100%}
+  #toTop{right:16px;bottom:16px}
+}
+@media(max-width:620px){
+  body{font-size:15.5px}
+  main{padding-left:20px;padding-right:20px}
+  h2{font-size:20px;margin-top:42px}
+  h3{font-size:16px}
+  .hero h1{font-size:27px}
+  .codeblock code,.ascii code{font-size:12px}
+  .table-wrap table{min-width:560px}
+  .cb-head{padding:6px 10px}
+  .copy{padding:2px 8px}
+  .diff-row{flex-direction:column;gap:2px}
+  .diff-row b{flex:none}
+}
+@media print{
+  @page{margin:14mm 13mm}
+  html,body{background:#fff!important;color:#111!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  #bar,#sidebar,#backdrop,#toTop,.topbar,.hero-actions,.copy,.cb-hint{display:none!important}
+  main{margin:0;padding:0}
+  .wrap{max-width:none}
+  .hero{box-shadow:none;border:0;padding:0 0 10px;margin-bottom:18px;border-bottom:1px solid #ccc}
+  article{font-size:10.5pt;line-height:1.7}
+  h2{font-size:14pt;margin-top:18pt;padding-top:8pt;break-after:avoid}
+  h3{font-size:11.5pt;break-after:avoid}
+  .codeblock{break-inside:avoid;box-shadow:none}
+  pre{overflow:visible}
+  pre.ascii code{white-space:pre-wrap;font-size:8.6pt;line-height:1.45}
+  code{font-size:9pt}
+  .table-wrap{overflow:visible;box-shadow:none}
+  table{min-width:0;font-size:9pt}
+  .callout{break-inside:avoid}
+  a{color:#111!important;text-decoration:none}
+  .anchor-link{display:none}
+  #s1{display:none}
+  .aux{break-inside:avoid;background:transparent;border-color:#bbb}
+  .aux .ans{display:block}
+  .reveal{display:none!important}
+  .flow-box,.ans{background:transparent}
+}
+</style>
+</head>
+<body>
+<div id="bar"></div>
+<div class="topbar">
+  <a class="topbar-back" href="../index.html">‹ 目录</a>
+  <span class="topbar-title">TCP 协议学习笔记</span>
+  <div style="display:flex;gap:8px">
+    <button class="tb-btn" id="tocToggle" type="button">目录</button>
+    <button class="tb-btn theme-toggle" type="button" aria-pressed="false"><svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="1.8"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"/></svg><span class="theme-label">深色模式</span></button>
+  </div>
+</div>
+<div id="backdrop"></div>
+
+<aside id="sidebar">
+  <div class="side-inner">
+    <a class="back-link" href="../index.html">← 返回资料目录</a>
+    <div class="brand">
+      <span class="mark">TCP</span>
+      <div>
+        <h2>TCP 协议学习笔记</h2>
+        <p>Study Notes</p>
+      </div>
+    </div>
+    <div class="side-meta">
+      <span>18 章</span><span>13 段代码</span><span>约 23 分钟</span>
+    </div>
+    <p class="side-title">目录 / Contents</p>
+    <nav id="toc">
+      <a class="toc-item" href="#s0" data-target="s0"><span class="toc-num">00</span><span class="toc-text">五分钟速览（核心结论 + 记忆锚点）</span></a>
+      <a class="toc-item" href="#s1" data-target="s1"><span class="toc-num">01</span><span class="toc-text">目录</span></a>
+      <a class="toc-item" href="#s2" data-target="s2"><span class="toc-num">02</span><span class="toc-text">协议定位与基本概念</span></a>
+      <a class="toc-item" href="#s3" data-target="s3"><span class="toc-num">03</span><span class="toc-text">四大核心特点</span></a>
+      <a class="toc-sub" href="#s3-1" data-target="s3-1"><span class="toc-sub-num">3.1</span><span class="toc-text">面向连接（Connection-Oriented）</span></a>
+      <a class="toc-sub" href="#s3-2" data-target="s3-2"><span class="toc-sub-num">3.2</span><span class="toc-text">可靠传输（Reliable）</span></a>
+      <a class="toc-sub" href="#s3-3" data-target="s3-3"><span class="toc-sub-num">3.3</span><span class="toc-text">基于字节流（Byte-Stream）</span></a>
+      <a class="toc-sub" href="#s3-4" data-target="s3-4"><span class="toc-sub-num">3.4</span><span class="toc-text">全双工（Full-Duplex）</span></a>
+      <a class="toc-sub" href="#s3-5" data-target="s3-5"><span class="toc-sub-num">3.5</span><span class="toc-text">半关闭（Half-Close）——原稿未显式提到，但概念关键</span></a>
+      <a class="toc-item" href="#s4" data-target="s4"><span class="toc-num">04</span><span class="toc-text">三次握手（Three-Way Handshake）</span></a>
+      <a class="toc-sub" href="#s4-1" data-target="s4-1"><span class="toc-sub-num">4.1</span><span class="toc-text">过程图（ASCII，所有 Markdown 阅读器均可显示）</span></a>
+      <a class="toc-sub" href="#s4-2" data-target="s4-2"><span class="toc-sub-num">4.2</span><span class="toc-text">状态迁移</span></a>
+      <a class="toc-sub" href="#s4-3" data-target="s4-3"><span class="toc-sub-num">4.3</span><span class="toc-text">为什么必须是三次？</span></a>
+      <a class="toc-sub" href="#s4-4" data-target="s4-4"><span class="toc-sub-num">4.4</span><span class="toc-text">参数协商与安全细节</span></a>
+      <a class="toc-sub" href="#s4-5" data-target="s4-5"><span class="toc-sub-num">4.5</span><span class="toc-text">Mermaid 版（可选，仅支持的渲染器显示）</span></a>
+      <a class="toc-item" href="#s5" data-target="s5"><span class="toc-num">05</span><span class="toc-text">四次挥手（Four-Way Teardown）</span></a>
+      <a class="toc-sub" href="#s5-1" data-target="s5-1"><span class="toc-sub-num">5.1</span><span class="toc-text">过程图（ASCII）</span></a>
+      <a class="toc-sub" href="#s5-2" data-target="s5-2"><span class="toc-sub-num">5.2</span><span class="toc-text">状态迁移</span></a>
+      <a class="toc-sub" href="#s5-3" data-target="s5-3"><span class="toc-sub-num">5.3</span><span class="toc-text">TIME_WAIT 的两个作用</span></a>
+      <a class="toc-sub" href="#s5-4" data-target="s5-4"><span class="toc-sub-num">5.4</span><span class="toc-text">为什么是四次不是三次？</span></a>
+      <a class="toc-sub" href="#s5-5" data-target="s5-5"><span class="toc-sub-num">5.5</span><span class="toc-text">Mermaid 版（可选）</span></a>
+      <a class="toc-item" href="#s6" data-target="s6"><span class="toc-num">06</span><span class="toc-text">可靠传输与差错控制</span></a>
+      <a class="toc-sub" href="#s6-1" data-target="s6-1"><span class="toc-sub-num">6.1</span><span class="toc-text">序列号与确认号</span></a>
+      <a class="toc-sub" href="#s6-2" data-target="s6-2"><span class="toc-sub-num">6.2</span><span class="toc-text">超时重传（RTO）</span></a>
+      <a class="toc-sub" href="#s6-3" data-target="s6-3"><span class="toc-sub-num">6.3</span><span class="toc-text">快速重传与 SACK</span></a>
+      <a class="toc-sub" href="#s6-4" data-target="s6-4"><span class="toc-sub-num">6.4</span><span class="toc-text">校验和（Checksum）</span></a>
+      <a class="toc-sub" href="#s6-5" data-target="s6-5"><span class="toc-sub-num">6.5</span><span class="toc-text">可靠性 ≠ 实时性</span></a>
+      <a class="toc-item" href="#s7" data-target="s7"><span class="toc-num">07</span><span class="toc-text">流量控制（Flow Control）</span></a>
+      <a class="toc-sub" href="#s7-1" data-target="s7-1"><span class="toc-sub-num">7.1</span><span class="toc-text">滑动窗口机制</span></a>
+      <a class="toc-sub" href="#s7-2" data-target="s7-2"><span class="toc-sub-num">7.2</span><span class="toc-text">零窗口与窗口探测</span></a>
+      <a class="toc-sub" href="#s7-3" data-target="s7-3"><span class="toc-sub-num">7.3</span><span class="toc-text">窗口扩大选项（Window Scale, RFC 7323）</span></a>
+      <a class="toc-sub" href="#s7-4" data-target="s7-4"><span class="toc-sub-num">7.4</span><span class="toc-text">糊涂窗口综合症（Silly Window Syndrome, SWS）</span></a>
+      <a class="toc-item" href="#s8" data-target="s8"><span class="toc-num">08</span><span class="toc-text">拥塞控制（Congestion Control）</span></a>
+      <a class="toc-sub" href="#s8-1" data-target="s8-1"><span class="toc-sub-num">8.1</span><span class="toc-text">四个阶段</span></a>
+      <a class="toc-sub" href="#s8-2" data-target="s8-2"><span class="toc-sub-num">8.2</span><span class="toc-text">状态机（ASCII 简图）</span></a>
+      <a class="toc-sub" href="#s8-3" data-target="s8-3"><span class="toc-sub-num">8.3</span><span class="toc-text">关于初始拥塞窗口（重要校正）</span></a>
+      <a class="toc-sub" href="#s8-4" data-target="s8-4"><span class="toc-sub-num">8.4</span><span class="toc-text">现代算法</span></a>
+      <a class="toc-item" href="#s9" data-target="s9"><span class="toc-num">09</span><span class="toc-text">报文段结构（Segment Format）</span></a>
+      <a class="toc-sub" href="#s9-1" data-target="s9-1"><span class="toc-sub-num">9.1</span><span class="toc-text">首部布局（ASCII，按 32 位行对齐）</span></a>
+      <a class="toc-sub" href="#s9-2" data-target="s9-2"><span class="toc-sub-num">9.2</span><span class="toc-text">字段说明</span></a>
+      <a class="toc-sub" href="#s9-3" data-target="s9-3"><span class="toc-sub-num">9.3</span><span class="toc-text">控制位（Flags）</span></a>
+      <a class="toc-sub" href="#s9-4" data-target="s9-4"><span class="toc-sub-num">9.4</span><span class="toc-text">常用选项（Options）</span></a>
+      <a class="toc-sub" href="#s9-5" data-target="s9-5"><span class="toc-sub-num">9.5</span><span class="toc-text">Mermaid 版（可选，仅示意分层，不做逐位对齐）</span></a>
+      <a class="toc-item" href="#s10" data-target="s10"><span class="toc-num">10</span><span class="toc-text">与 UDP 的对比</span></a>
+      <a class="toc-item" href="#s11" data-target="s11"><span class="toc-num">11</span><span class="toc-text">适用场景与局限</span></a>
+      <a class="toc-sub" href="#s11-1" data-target="s11-1"><span class="toc-sub-num">11.1</span><span class="toc-text">适合的场景</span></a>
+      <a class="toc-sub" href="#s11-2" data-target="s11-2"><span class="toc-sub-num">11.2</span><span class="toc-text">局限</span></a>
+      <a class="toc-sub" href="#s11-3" data-target="s11-3"><span class="toc-sub-num">11.3</span><span class="toc-text">什么时候换 UDP / QUIC</span></a>
+      <a class="toc-item" href="#s12" data-target="s12"><span class="toc-num">12</span><span class="toc-text">常见易错点与面试高频问法</span></a>
+      <a class="toc-sub" href="#s12-1" data-target="s12-1"><span class="toc-sub-num">12.1</span><span class="toc-text">十个高频易错点</span></a>
+      <a class="toc-sub" href="#s12-2" data-target="s12-2"><span class="toc-sub-num">12.2</span><span class="toc-text">面试高频问法（含答题骨架）</span></a>
+      <a class="toc-sub" href="#s12-3" data-target="s12-3"><span class="toc-sub-num">12.3</span><span class="toc-text">抓包里常见的"异常信号"</span></a>
+      <a class="toc-item" href="#s13" data-target="s13"><span class="toc-num">13</span><span class="toc-text">参数与概念对照表</span></a>
+      <a class="toc-item" href="#s14" data-target="s14"><span class="toc-num">14</span><span class="toc-text">自测题（10 题）</span></a>
+      <a class="toc-item" href="#s15" data-target="s15"><span class="toc-num">15</span><span class="toc-text">参考答案</span></a>
+      <a class="toc-item" href="#s16" data-target="s16"><span class="toc-num">16</span><span class="toc-text">动手验证：常用命令</span></a>
+      <a class="toc-item" href="#s17" data-target="s17"><span class="toc-num">17</span><span class="toc-text">校正记录（与原稿差异）</span></a>
+    </nav>
+    <div class="side-foot">
+      <a href="../index.html">
+        <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="1.6"><path d="M4 5h16M4 12h16M4 19h10"/><path d="M18 16l3 3-3 3"/></svg>
+        返回资料目录
+      </a>
+      <em>单文件离线版 · 无外部依赖<br>支持浅色 / 深色与打印导出 PDF</em>
+    </div>
+  </div>
+</aside>
+
+<main>
+<div class="wrap">
+  <header class="hero">
+    <p class="eyebrow">传输层 · Transmission Control Protocol</p>
+    <h1>TCP 协议学习笔记</h1>
+    <p class="hero-sub">自学 · 复习用 —— 速览、机制、报文结构、易错点与自测</p>
+    <div class="pills">
+      <span class="pill"><b>18</b> 个章节</span>
+      <span class="pill"><b>13</b> 段 ASCII 图 / 代码</span>
+      <span class="pill">基准 <b>RFC 9293</b>（2022）</span>
+      <span class="pill">预计阅读 <b>23</b> 分钟</span>
+      <span class="pill">虚线框为<b>补充内容</b></span>
+    </div>
+    <div class="hero-actions">
+      <button class="act theme-toggle" type="button" aria-pressed="false">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"/></svg>
+        <span class="theme-label">深色模式</span>
+      </button>
+      <button class="act" id="printBtn" type="button">
+        <svg viewBox="0 0 24 24"><path d="M6 9V3h12v6M6 18H4v-6h16v6h-2"/><rect x="7" y="14" width="10" height="7"/></svg>
+        打印 / 存为 PDF
+      </button>
+      <a class="act" href="../index.html">
+        <svg viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h10"/><path d="M18 16l3 3-3 3"/></svg>
+        返回资料目录
+      </a>
+    </div>
+  </header>
+
+  <article id="content">
+<div class="callout note"><span class="callout-tag">说 明</span><div class="callout-body"><p>定位：面向"复习 + 面试 + 实战排查"的速查笔记。先读第 0 节的 5 分钟速览，再按需下沉到具体章节。 技术基准：以 RFC 9293（2022 年，取代 RFC 793）与主流实现（Linux 内核 TCP 栈）为准；与旧教材说法不一致之处，文中以 <code class="ic">&gt; 校正</code> 标注。</p>
+</div></div>
+<h2 id="s0">0. 五分钟速览（核心结论 + 记忆锚点）</h2>
+<div class="aux brief"><span class="aux-tag">补充 · 本节要点</span><p>5 分钟版本：七条结论 + 七个锚点先背熟，细节留到后面按需回查。</p></div>
+<p><strong>一句话定义</strong>：传输控制协议（Transmission Control Protocol, TCP）是 TCP/IP 模型传输层的<strong>面向连接的、可靠的、基于字节流</strong>的传输协议，位于 IP 层之上、应用层之下。</p>
+<p><strong>七条核心结论</strong></p>
+<ol><li><strong>连接是"逻辑"的</strong>：双方各自维护一套状态（序列号、窗口、定时器），不存在物理链路。</li><li><strong>建立连接三次握手、释放连接通常四次挥手</strong>：本质是"双方向的初始序列号同步"与"双方向的关闭通知"必须分别完成。</li><li><strong>可靠的四件套</strong>：序列号（Sequence Number, seq）+ 确认（Acknowledgment, ACK）+ 超时重传 + 校验和（Checksum）。</li><li><strong>字节流不是消息流</strong>：TCP 不保留应用层消息边界，"粘包/拆包"要由应用层自己解决。</li><li><strong>两层"窗口"要分清</strong>：接收方给的 <code class="ic">rwnd</code>（接收窗口）与发送方算的 <code class="ic">cwnd</code>（拥塞窗口），实际可发 = <code class="ic">min(rwnd, cwnd)</code>。</li><li><strong>流量控制防"压垮接收方"，拥塞控制防"压垮网络"</strong>，两者目标不同、机制独立。</li><li><strong>TCP 保证可靠、有序、不重复，但不保证实时</strong>：延迟抖动与队头阻塞（Head-of-Line Blocking, HOL）是它的结构性代价。</li></ol>
+<p><strong>记忆锚点</strong></p>
+<div class="table-wrap"><table><thead><tr><th>锚点</th><th>内容</th></tr></thead><tbody><tr><td>握手口诀</td><td>SYN → SYN+ACK → ACK（三步，seq/ack 互相 +1）</td></tr><tr><td>挥伤口诀</td><td>FIN → ACK → FIN → ACK（四步，FIN 也占 1 个序号）</td></tr><tr><td>两个"1"</td><td>SYN 占 1 个序列号；FIN 占 1 个序列号</td></tr><tr><td>两个"MSL"</td><td>只有<strong>主动关闭方</strong>进 TIME_WAIT，等 2MSL（Linux 实际固定 60 s）</td></tr><tr><td>头部两个数</td><td>最小 20 字节（数据偏移=5），最大 60 字节（选项最多 40 字节）</td></tr><tr><td>窗口两个名</td><td>rwnd（接收方给）/ cwnd（发送方算），发送上限取小</td></tr><tr><td>慢启动不慢</td><td>慢启动是<strong>指数</strong>增长；拥塞避免才是<strong>线性</strong>增长</td></tr></tbody></table></div>
+<p><strong>最该背下来的一张图</strong>：三次握手 + 四次挥手的状态变迁（见第 3、4 节），面试与抓包分析都靠它。</p>
+<h2 id="s1">1. 目录</h2>
+<ul><li><a href="#s0">0. 五分钟速览（核心结论 + 记忆锚点）</a></li><li><a href="#s1">1. 目录</a></li><li><a href="#s2">2. 协议定位与基本概念</a></li><li><a href="#s3">3. 四大核心特点</a></li><li><a href="#s4">4. 三次握手（Three-Way Handshake）</a></li><li><a href="#s5">5. 四次挥手（Four-Way Teardown）</a></li><li><a href="#s6">6. 可靠传输与差错控制</a></li><li><a href="#s7">7. 流量控制（Flow Control）</a></li><li><a href="#s8">8. 拥塞控制（Congestion Control）</a></li><li><a href="#s9">9. 报文段结构（Segment Format）</a></li><li><a href="#s10">10. 与 UDP 的对比</a></li><li><a href="#s11">11. 适用场景与局限</a></li><li><a href="#s12">12. 常见易错点与面试高频问法</a></li><li><a href="#s13">13. 参数与概念对照表</a></li><li><a href="#s14">14. 自测题（10 题）</a></li><li><a href="#s15">15. 参考答案</a></li><li><a href="#s16">16. 动手验证：常用命令</a></li><li><a href="#s17">17. 校正记录（与原稿差异）</a></li></ul>
+<h2 id="s2">2. 协议定位与基本概念</h2>
+<div class="aux brief"><span class="aux-tag">补充 · 本节要点</span><p>TCP 解决的是“进程到进程”的可靠传输：端口定位进程，IP 负责逐跳转发。</p></div>
+<p><strong>协议栈位置</strong>：<code class="ic">应用层（HTTP/FTP/SSH…）</code> → <strong><code class="ic">传输层：TCP / UDP</code></strong> → <code class="ic">网络层：IP</code> → <code class="ic">链路层</code>。</p>
+<p>TCP 对上（应用层）提供<strong>进程到进程</strong>的通信能力（靠端口号区分进程），对下把数据交给 IP 层，由 IP 负责逐跳转发。</p>
+<p><strong>关键术语（首次出现给中英对照）</strong></p>
+<div class="table-wrap"><table><thead><tr><th>术语</th><th>英文</th><th>含义</th></tr></thead><tbody><tr><td>传输控制协议</td><td>Transmission Control Protocol, TCP</td><td>传输层面向连接的可靠协议</td></tr><tr><td>报文段</td><td>Segment</td><td>TCP 的协议数据单元（IP 层叫分组/包，Packet）</td></tr><tr><td>序列号</td><td>Sequence Number, seq</td><td>本段第一个数据字节在字节流中的编号</td></tr><tr><td>确认号</td><td>Acknowledgment Number, ack</td><td>期望收到的<strong>下一个</strong>字节的编号</td></tr><tr><td>初始序列号</td><td>Initial Sequence Number, ISN</td><td>连接建立时随机选取的起始序号</td></tr><tr><td>最大报文段长度</td><td>Maximum Segment Size, MSS</td><td>单个报文段能承载的最大数据字节数（不含 TCP 头）</td></tr><tr><td>最大传输单元</td><td>Maximum Transmission Unit, MTU</td><td>链路层单帧可承载的最大 IP 包长度</td></tr><tr><td>接收窗口</td><td>Receive Window, rwnd</td><td>接收方通告的可用缓冲大小</td></tr><tr><td>拥塞窗口</td><td>Congestion Window, cwnd</td><td>发送方根据网络状况推算的可发送量</td></tr><tr><td>慢启动阈值</td><td>Slow Start Threshold, ssthresh</td><td>慢启动与拥塞避免的分界点</td></tr><tr><td>重传超时</td><td>Retransmission Timeout, RTO</td><td>等待 ACK 的超时时间（动态估算）</td></tr><tr><td>报文最大生存时间</td><td>Maximum Segment Lifetime, MSL</td><td>报文在网络中的最大存活时间</td></tr><tr><td>半关闭</td><td>Half-Close</td><td>一方关闭发送方向、仍保留接收方向</td></tr><tr><td>队头阻塞</td><td>Head-of-Line Blocking, HOL</td><td>前序数据未到导致后续数据无法交付</td></tr></tbody></table></div>
+<div class="aux remember"><span class="aux-tag">补充 · 记住这一点</span><p>看到端口号就想“进程”，看到 IP 就想“主机与路由”，两者分工不同。</p></div>
+<h2 id="s3">3. 四大核心特点</h2>
+<div class="aux brief"><span class="aux-tag">补充 · 本节要点</span><p>四大特点不是四个并列功能，而是同一套机制在不同侧面的表现。</p></div>
+<h3 id="s3-1" class="h3">3.1 面向连接（Connection-Oriented）</h3>
+<ul><li>通信前必须<strong>三次握手</strong>建立连接，通信结束后<strong>四次挥手</strong>（多数情况下）释放连接。</li><li>"连接"是<strong>逻辑连接</strong>：没有物理线路，只体现为两端各自维护的连接状态机（序列号、窗口、定时器、缓冲区）。</li><li>一条 TCP 连接由<strong>四元组</strong>唯一确定：<code class="ic">(源 IP, 源端口, 目的 IP, 目的端口)</code>。</li></ul>
+<h3 id="s3-2" class="h3">3.2 可靠传输（Reliable）</h3>
+<ul><li>确认机制（ACK）：接收方对已正确收到的数据回 ACK。</li><li>超时重传：RTO 到期未收到 ACK 则重传。</li><li>序列号：检测丢失、乱序、重复。</li><li>校验和：检测传输过程中的比特错误。</li><li>补充：还有<strong>快速重传（Fast Retransmit）</strong> 与 <strong>SACK</strong> 提升恢复效率（详见第 6 节）。</li></ul>
+<h3 id="s3-3" class="h3">3.3 基于字节流（Byte-Stream）</h3>
+<ul><li>TCP 把应用层数据视为<strong>无结构的字节序列</strong>，不保留消息边界。</li><li>发送方有<strong>发送缓冲区</strong>，接收方有<strong>接收缓冲区</strong>；应用层的 <code class="ic">write()</code> 与网络上的分段是<strong>解耦</strong>的。</li><li>由此产生两个常见现象：<ul><li><strong>粘包</strong>：多次 <code class="ic">send</code> 的数据被合并到一个报文段；</li><li><strong>拆包</strong>：一次 <code class="ic">send</code> 的大数据被切成多个报文段。</li><li>这类问题<strong>只能由应用层解决</strong>（定长、分隔符、长度字段，或改用带边界的协议）。</li></ul></li><li>与 UDP（User Datagram Protocol）的"报文边界保留"形成对照。</li></ul>
+<h3 id="s3-4" class="h3">3.4 全双工（Full-Duplex）</h3>
+<ul><li>连接双方可<strong>同时</strong>发送与接收数据。</li><li>两个方向<strong>各自独立</strong>维护序列号、窗口与定时器，因此关闭也是两个方向分别关闭 → 这正是"四次挥手"和"半关闭"的根源。</li></ul>
+<h3 id="s3-5" class="h3">3.5 半关闭（Half-Close）——原稿未显式提到，但概念关键</h3>
+<ul><li><code class="ic">FIN</code> 的语义是"<strong>我这个方向没有数据要发了</strong>"，而<strong>不是</strong>"连接断了"。</li><li>一方发出 FIN 后，仍可<strong>继续接收</strong>对方数据，这种状态称为半关闭（Half-Close）。</li><li>编程接口：<code class="ic">shutdown(fd, SHUT_WR)</code> → 只关闭写方向并发送 FIN；<code class="ic">close(fd)</code> → 关闭整个描述符（全关闭）。</li><li>常见双工协议（如 HTTP/1.0 短连接、FTP 数据连接）会先半关闭再等待对端结束。</li></ul>
+<div class="callout correction"><span class="callout-tag">校 正</span><div class="callout-body"><p><strong>校正</strong>：原稿"通信结束后通过四次挥手释放连接"表述可保留，但要注意：<strong>挥手次数取决于双方是否都有数据要发</strong>。若被动方已无数据可发，可将 ACK 与 FIN 合并成一个报文段，实际呈现为"三次挥手"；因此"必须是四次"是教学简化说法。</p>
+</div></div>
+<div class="aux remember"><span class="aux-tag">补充 · 记住这一点</span><p>全双工是四次挥手与半关闭的根源：两个方向各自独立关闭。</p></div>
+<h2 id="s4">4. 三次握手（Three-Way Handshake）</h2>
+<div class="aux brief"><span class="aux-tag">补充 · 本节要点</span><p>三次握手的核心不是“打招呼”，而是双向同步 ISN 并协商参数；第三次 ACK 可以携带数据。</p></div>
+<h3 id="s4-1" class="h3">4.1 过程图（ASCII，所有 Markdown 阅读器均可显示）</h3>
+<div class="codeblock" data-lang="text"><div class="cb-head"><span class="cb-lang">ASCII 图示</span><span class="cb-hint">可横向滚动</span><button class="copy" type="button" aria-label="复制此代码块">复制</button></div><pre class="cb-pre ascii"><code>        客户端 Client                              服务端 Server
+             |                                           |
+   CLOSED    |                                           |  LISTEN
+             |                                           |
+             |  ① SYN  seq=x                             |
+   SYN_SENT  |  ---------------------------------------&gt; |
+             |                                           |  SYN_RCVD
+             |  ② SYN+ACK  seq=y, ack=x+1                |
+             |  &lt;--------------------------------------- |
+             |                                           |
+             |  ③ ACK  seq=x+1, ack=y+1                  |
+ ESTABLISHED |  ---------------------------------------&gt; |  ESTABLISHED
+             |                                           |</code></pre></div>
+<p>要点：</p>
+<ul><li>第①步 <code class="ic">SYN</code> 消耗 <strong>1 个序列号</strong>，所以第②步回 <code class="ic">ack = x + 1</code>。</li><li>第②步 <code class="ic">SYN</code> 同样消耗 1 个序列号，所以第③步回 <code class="ic">ack = y + 1</code>。</li><li>第③步的 ACK 报文<strong>可以携带数据</strong>（这是唯一能"顺手带数据"的握手报文）。</li></ul>
+<h3 id="s4-2" class="h3">4.2 状态迁移</h3>
+<div class="table-wrap"><table><thead><tr><th>阶段</th><th>客户端</th><th>服务端</th></tr></thead><tbody><tr><td>初始</td><td>CLOSED</td><td>LISTEN</td></tr><tr><td>发出 SYN</td><td>SYN_SENT</td><td>—</td></tr><tr><td>收到 SYN</td><td>—</td><td>SYN_RCVD</td></tr><tr><td>收到 SYN+ACK</td><td>ESTABLISHED（发出 ACK）</td><td>—</td></tr><tr><td>收到 ACK</td><td>ESTABLISHED</td><td>ESTABLISHED</td></tr></tbody></table></div>
+<h3 id="s4-3" class="h3">4.3 为什么必须是三次？</h3>
+<ol><li><strong>同步双向初始序列号（ISN）</strong>：双方都需要知道"对方从哪个号开始"，且需要对方对自己 ISN 的确认。两次只能完成一个方向。</li><li><strong>确认双向可达</strong>：客户端能确认"服务端能收、也能发"；服务端能确认"客户端能收、也能发"。</li><li><strong>防止历史失效的连接请求</strong>：RFC 793 的经典理由——一个早已失效的重复 SYN 若到达服务端，两次握手会让服务端直接建立连接并空等，浪费资源；三次握手时客户端不会对该 SYN 回 ACK，连接建立不起来。</li><li><strong>协商参数</strong>：MSS、窗口扩大因子（Window Scale）、SACK、时间戳（Timestamps）等选项都在 SYN 中交换，且<strong>只在 SYN 中协商</strong>，连接建立后无法再改。</li></ol>
+<div class="callout note"><span class="callout-tag">说 明</span><div class="callout-body"><p>因此"两次不够、四次多余"：三次是"双向同步 + 双向确认"的最小完备次数。</p>
+</div></div>
+<h3 id="s4-4" class="h3">4.4 参数协商与安全细节</h3>
+<ul><li><strong>ISN 随机化</strong>：现代实现用随机/时钟驱动的 ISN，降低序列号预测攻击与旧连接干扰。RFC 6528 给出了基于 SipHash 的 ISN 生成算法。</li><li><strong>SYN 队列</strong>：Linux 分 <code class="ic">SYN queue</code>（半连接队列，<code class="ic">tcp_max_syn_backlog</code>）与 <code class="ic">accept queue</code>（全连接队列，<code class="ic">somaxconn</code>）。SYN Flood 打满半连接队列，可用 <strong>SYN Cookie</strong>（<code class="ic">tcp_syncookies</code>）应对。</li><li><strong>TCP Fast Open (TFO, RFC 7413)</strong>：允许在 SYN 中携带数据，省去一次 RTT；需双方支持且受安全策略限制。</li></ul>
+<h3 id="s4-5" class="h3">4.5 Mermaid 版（可选，仅支持的渲染器显示）</h3>
+<div class="codeblock" data-lang="mermaid"><div class="cb-head"><span class="cb-lang">Mermaid 源码（可选）</span><button class="copy" type="button" aria-label="复制此代码块">复制</button></div><pre class="cb-pre"><code><span class="tk-kw">sequenceDiagram</span>
+    <span class="tk-kw">participant</span> C <span class="tk-lab">as</span> Client
+    <span class="tk-kw">participant</span> S <span class="tk-lab">as</span> Server
+    C<span class="tk-arrow">-&gt;&gt;</span>S: SYN <span class="tk-opt">(seq=x)</span>
+    S<span class="tk-arrow">-&gt;&gt;</span>C: SYN+ACK <span class="tk-opt">(seq=y, ack=x+1)</span>
+    C<span class="tk-arrow">-&gt;&gt;</span>S: ACK <span class="tk-opt">(ack=y+1)</span>
+    <span class="tk-kw">Note</span> <span class="tk-lab">over</span> C,S: ESTABLISHED（全双工）</code></pre></div>
+<div class="aux remember"><span class="aux-tag">补充 · 记住这一点</span><p>SYN 占 1 个序号，所以 ack = 对方 seq + 1；两次不够，四次多余。</p></div>
+<h2 id="s5">5. 四次挥手（Four-Way Teardown）</h2>
+<div class="aux brief"><span class="aux-tag">补充 · 本节要点</span><p>挥手次数取决于双方是否还有数据要发：ACK 与 FIN 可合并时为三次，通常为四次。</p></div>
+<h3 id="s5-1" class="h3">5.1 过程图（ASCII）</h3>
+<div class="codeblock" data-lang="text"><div class="cb-head"><span class="cb-lang">ASCII 图示</span><span class="cb-hint">可横向滚动</span><button class="copy" type="button" aria-label="复制此代码块">复制</button></div><pre class="cb-pre ascii"><code>   主动关闭方（如 Client）                    被动关闭方（如 Server）
+        ESTABLISHED                                  ESTABLISHED
+             |                                            |
+             |  ① FIN  seq=u                              |
+   FIN_WAIT_1|  ----------------------------------------&gt; |  CLOSE_WAIT
+             |  ② ACK  ack=u+1                            |
+             |  &lt;---------------------------------------- |
+   FIN_WAIT_2|                                            |  应用继续发数据
+             |                                            |  （半关闭：对端仍可发）
+             |  ③ FIN  seq=w, ack=u+1                     |
+             |  &lt;---------------------------------------- |  LAST_ACK
+             |  ④ ACK  ack=w+1                            |
+             |  ----------------------------------------&gt; |  CLOSED
+   TIME_WAIT |   等待 2MSL 后 → CLOSED</code></pre></div>
+<p>要点：</p>
+<ul><li><code class="ic">FIN</code> 也消耗 <strong>1 个序列号</strong>，所以对方回 <code class="ic">ack = u + 1</code>。</li><li>第②步 ACK 与第③步 FIN <strong>通常分开</strong>：因为 TCP 全双工，被动方的"我收到你要关"（ACK）与"我也发完了"（FIN）是两件独立的事。</li><li>第③步的 seq 记为 <code class="ic">w</code>：被动方在此期间若发过数据，其序列号已推进。</li></ul>
+<h3 id="s5-2" class="h3">5.2 状态迁移</h3>
+<div class="table-wrap"><table><thead><tr><th>阶段</th><th>主动关闭方</th><th>被动关闭方</th></tr></thead><tbody><tr><td>发出 FIN</td><td>FIN_WAIT_1</td><td>—</td></tr><tr><td>收到 FIN</td><td>—</td><td>CLOSE_WAIT</td></tr><tr><td>收到 ACK</td><td>FIN_WAIT_2</td><td>—</td></tr><tr><td>发出 FIN</td><td>—</td><td>LAST_ACK</td></tr><tr><td>收到 FIN</td><td>TIME_WAIT（回 ACK）</td><td>—</td></tr><tr><td>收到 ACK</td><td>—</td><td>CLOSED</td></tr><tr><td>等满 2MSL</td><td>CLOSED</td><td>—</td></tr></tbody></table></div>
+<div class="callout correction"><span class="callout-tag">校 正</span><div class="callout-body"><p><strong>校正：TIME_WAIT 只出现在主动关闭方。</strong> 被动关闭方走 <code class="ic">CLOSE_WAIT → LAST_ACK → CLOSED</code>，<strong>不会</strong>进入 TIME_WAIT。大量 TIME_WAIT 说明本机是"主动关连接"的一方（常见于客户端/短连接服务器）；大量 CLOSE_WAIT 则说明本机应用<strong>没正确 close()</strong>，这是代码 BUG 而非内核参数问题。</p>
+</div></div>
+<h3 id="s5-3" class="h3">5.3 TIME_WAIT 的两个作用</h3>
+<ol><li><strong>保证最后一个 ACK 能到达</strong>：若第④步 ACK 丢失，被动方会重传 FIN；主动方仍处于 TIME_WAIT，可再次回 ACK。若立刻关闭，对端重传的 FIN 只会收到 RST，导致对端异常关闭（可能出现数据截断）。</li><li><strong>让旧连接的残余报文在网络中消散</strong>：等待 2MSL 确保本连接的"迷路报文"全部过期，避免被<strong>同一四元组的新连接</strong>误收（序列号虽随机，但仍有窗口重叠风险）。</li></ol>
+<div class="callout correction"><span class="callout-tag">校 正</span><div class="callout-body"><p><strong>校正：2MSL 的时长并非"固定 2 分钟"。</strong> RFC 793 建议 MSL = 2 分钟（即 2MSL = 4 分钟），但 Linux 实现把 TIME_WAIT 固定为 <strong>60 秒</strong>（<code class="ic">TCP_TIMEWAIT_LEN</code>），与 RTO 无关；<code class="ic">net.ipv4.tcp_fin_timeout</code> 影响的是 <strong>FIN_WAIT_2</strong> 的停留时间，<strong>不是</strong> TIME_WAIT。另外 TIME_WAIT 状态在高并发下可用 <code class="ic">tcp_tw_reuse</code>（仅对<strong>主动发起连接</strong>的客户端方向安全）缓解，但不建议 <code class="ic">tcp_tw_recycle</code>（已在 4.12+ 移除）。</p>
+</div></div>
+<h3 id="s5-4" class="h3">5.4 为什么是四次不是三次？</h3>
+<ul><li>全双工：两个方向的关闭互不依赖。被动方收到 FIN 时，可能还有数据没发完，只能先 ACK 表示"我知道了"，等数据发完再 FIN。</li><li>若被动方<strong>恰好也没有数据要发</strong>，ACK 与 FIN 可合并 → 形式上变成三次。所以"四次"是<strong>常见形态</strong>，不是协议强制次数。</li></ul>
+<h3 id="s5-5" class="h3">5.5 Mermaid 版（可选）</h3>
+<div class="codeblock" data-lang="mermaid"><div class="cb-head"><span class="cb-lang">Mermaid 源码（可选）</span><button class="copy" type="button" aria-label="复制此代码块">复制</button></div><pre class="cb-pre"><code><span class="tk-kw">sequenceDiagram</span>
+    <span class="tk-kw">participant</span> A <span class="tk-lab">as</span> Active Closer
+    <span class="tk-kw">participant</span> P <span class="tk-lab">as</span> P<span class="tk-lab">as</span>sive Closer
+    A<span class="tk-arrow">-&gt;&gt;</span>P: FIN <span class="tk-opt">(seq=u)</span>
+    P<span class="tk-arrow">-&gt;&gt;</span>A: ACK <span class="tk-opt">(ack=u+1)</span>
+    <span class="tk-kw">Note</span> <span class="tk-lab">over</span> P: CLOSE_WAIT（应用仍可发数据）
+    P<span class="tk-arrow">-&gt;&gt;</span>A: FIN <span class="tk-opt">(seq=w)</span>
+    A<span class="tk-arrow">-&gt;&gt;</span>P: ACK <span class="tk-opt">(ack=w+1)</span>
+    <span class="tk-kw">Note</span> <span class="tk-lab">over</span> A: TIME_WAIT，等待 2MSL</code></pre></div>
+<div class="aux remember"><span class="aux-tag">补充 · 记住这一点</span><p>只有主动关闭方进 TIME_WAIT；CLOSE_WAIT 多说明应用没 close()。</p></div>
+<h2 id="s6">6. 可靠传输与差错控制</h2>
+<div class="aux brief"><span class="aux-tag">补充 · 本节要点</span><p>可靠性 = 序号（定位）+ ACK（确认）+ 重传（补救）+ 校验和（查错），四者缺一不可。</p></div>
+<p>TCP 的"可靠"由四组机制叠加实现。</p>
+<h3 id="s6-1" class="h3">6.1 序列号与确认号</h3>
+<ul><li>序列号是<strong>字节级</strong>编号（不是报文编号），<code class="ic">seq</code> = 本报文第一个数据字节的编号。</li><li><code class="ic">ack</code> = <strong>期望收到的下一个字节编号</strong>（累积确认，Cumulative ACK）。例：收到 1–1000 字节后回 <code class="ic">ack=1001</code>。</li><li>因此 ACK 具有<strong>累积性</strong>：一个 ACK 等于确认了此前所有字节；乱序到达的字节不会推进 ACK。</li><li>32 位序列号会<strong>回绕（wrap-around）</strong>；高带宽时延积（Bandwidth-Delay Product, BDP）链路上回绕更快，需靠时间戳选项做 PAWS（Protection Against Wrapped Sequences）判别。</li></ul>
+<div class="callout correction"><span class="callout-tag">校 正</span><div class="callout-body"><p><strong>校正：ACK 号不是"我已收到的最后一个字节"。</strong> 它是"我期望的下一个字节"，差 1 是经典错误点。</p>
+</div></div>
+<h3 id="s6-2" class="h3">6.2 超时重传（RTO）</h3>
+<ul><li>RTO 由 RTT 采样动态估算（Jacobson/Karels 算法）：<code class="ic">SRTT</code>（平滑 RTT）+ <code class="ic">RTTVAR</code>（偏差），并做上下界约束；Linux 下限常为 200 ms（<code class="ic">TCP_RTO_MIN</code>）。</li><li><strong>Karn 算法</strong>：重传过的报文不做 RTT 采样（重传导致 ACK 归属歧义）；配合时间戳选项可放宽。</li><li>指数退避（Exponential Backoff）：连续超时按 1、2、4、8… 倍增 RTO，避免拥塞时继续猛发。</li><li>重传的两种触发：<ul><li><strong>超时重传</strong>：RTO 到期（网络严重丢包/ACK 全丢）；</li><li><strong>快速重传（Fast Retransmit）</strong>：收到重复 ACK 达到阈值时立即重传，不等超时。</li></ul></li></ul>
+<h3 id="s6-3" class="h3">6.3 快速重传与 SACK</h3>
+<ul><li>触发条件：收到 <strong>3 个重复 ACK</strong>（Duplicate ACK，即同一 ack 号累计出现 4 次）时，认为该报文丢失，立即重传（阈值 <code class="ic">dupthresh</code> 可调，Linux 有 <code class="ic">tcp_reordering</code>）。</li><li><strong>SACK（Selective ACK，RFC 2018）</strong>：在选项中标明"我已收到哪些块"，发送方可精确重传缺失部分，避免"go-back-N"式的重复发送。配套 <strong>DSACK</strong> 用于识别重复报文。</li><li><strong>RACK / TLP</strong>（Linux 现代实现）：基于时间而非 ACK 计数判断丢包，对"每窗口丢包数少"的场景更准。</li></ul>
+<h3 id="s6-4" class="h3">6.4 校验和（Checksum）</h3>
+<ul><li>16 位反码求和，覆盖 <strong>伪首部（Pseudo-Header）+ TCP 首部 + 数据 + 填充</strong>。</li><li>伪首部含源/目的 IP，因此<strong>重算校验和必须知道 IP 层信息</strong>（NAT 改写地址时需同步更新）。</li><li>只能检测错误，<strong>不能纠正</strong>；检测到错误直接丢弃，由重传补救。</li></ul>
+<div class="callout correction"><span class="callout-tag">校 正</span><div class="callout-body"><p><strong>校正：TCP 校验和在 IPv4 与 IPv6 下都是必需的。</strong> （IPv6 中"校验和可选"的说法只适用于 UDP，见 RFC 8200。）另注意：校验和无法防御恶意篡改，安全需靠 TLS/IPsec。</p>
+</div></div>
+<h3 id="s6-5" class="h3">6.5 可靠性 ≠ 实时性</h3>
+<p>TCP 保证的是"<strong>最终正确、有序、不重复</strong>"，为此会<strong>等待与重传</strong>，代价是延迟可能突增（如尾部丢包导致等待）。这正是实时业务转向 UDP/QUIC 的原因。</p>
+<div class="aux remember"><span class="aux-tag">补充 · 记住这一点</span><p>ack 是“期望的下一个字节”，不是“已收到的最后一个字节”。</p></div>
+<h2 id="s7">7. 流量控制（Flow Control）</h2>
+<div class="aux brief"><span class="aux-tag">补充 · 本节要点</span><p>流量控制是接收方对发送方的“限速通知”，靠 rwnd 与滑动窗口实现，零窗口时必须探测。</p></div>
+<h3 id="s7-1" class="h3">7.1 滑动窗口机制</h3>
+<p>接收方在每个 ACK 中携带<strong>窗口字段（rwnd）</strong>，声明"从当前 ack 号起还能再收多少字节"，发送方据此限制在途数据量。</p>
+<div class="codeblock" data-lang="text"><div class="cb-head"><span class="cb-lang">ASCII 图示</span><span class="cb-hint">可横向滚动</span><button class="copy" type="button" aria-label="复制此代码块">复制</button></div><pre class="cb-pre ascii"><code>发送方视角（滑动窗口）:
+
+   已发送且已确认   |   已发送未确认   |   可发送（窗口内）  |  不可发送
+  -----------------|-----------------|-------------------|------------
+                   ^                 ^                   ^
+              send_una          send_next        send_una + rwnd</code></pre></div>
+<ul><li>收到 ACK 且窗口不变 → 窗口<strong>右移</strong>（滑动）。</li><li>窗口变小 → 右边界左移（<strong>窗口收缩</strong>，RFC 建议尽量避免）。</li></ul>
+<h3 id="s7-2" class="h3">7.2 零窗口与窗口探测</h3>
+<ul><li><code class="ic">rwnd = 0</code> 时，发送方<strong>暂停发送新数据</strong>，但<strong>不能就此静默</strong>：需启动<strong>持续定时器（Persist Timer）</strong>，周期性发送<strong>零窗口探测（Zero Window Probe）</strong>，接收方窗口恢复后回一个带非零窗口的 ACK。</li><li>探测报文本身不算"新数据"，避免死锁（若双方都在等对方先动，就会互锁）。</li></ul>
+<div class="callout correction"><span class="callout-tag">校 正</span><div class="callout-body"><p><strong>校正：原文"窗口为 0 时发送方停止发送"需要补一句——</strong> 停止的是<strong>新数据</strong>，探测报文与已发出的重传仍会继续。</p>
+</div></div>
+<h3 id="s7-3" class="h3">7.3 窗口扩大选项（Window Scale, RFC 7323）</h3>
+<ul><li>首部窗口字段只有 16 位 → 最大 65535 字节，对高 BDP 链路远远不够。</li><li>窗口扩大选项给出一个移位因子（0–14），实际窗口 = 字段值 × 2^factor，理论上限约 2^30 字节（1 GiB）。</li><li><strong>只能在 SYN 中协商</strong>，且因子对两个方向各自生效；一旦协商，连接期内不可改。</li></ul>
+<h3 id="s7-4" class="h3">7.4 糊涂窗口综合症（Silly Window Syndrome, SWS）</h3>
+<ul><li>接收方每次只腾出很小空间就通告小窗口，或发送方只发很小数据 → 大量小报文，效率极低。</li><li>对策：接收方<strong>延迟通告</strong>直到窗口够大（或达到半个缓冲区）；发送方用 <strong>Nagle 算法</strong>合并小数据（注意与延迟 ACK 组合可能引入 40 ms 级延迟）。</li></ul>
+<div class="aux remember"><span class="aux-tag">补充 · 记住这一点</span><p>rwnd 来自接收方，cwnd 由发送方推算，实际可发 = min(rwnd, cwnd)。</p></div>
+<div class="aux"><span class="aux-tag">补充 · 一张图记住</span>
+<div class="flow">
+  <div class="flow-box"><b>rwnd</b><span>接收方通告：缓冲区还能收多少</span></div>
+  <div class="flow-op">min</div>
+  <div class="flow-box"><b>cwnd</b><span>发送方推算：网络还能承载多少</span></div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-box out"><b>在途上限</b><span>任一时刻未确认的字节数</span></div>
+</div>
+<p class="aux-note">两个窗口目标不同：rwnd 防压垮接收端，cwnd 防压垮网络。发送方只能取较小值。</p></div>
+<h2 id="s8">8. 拥塞控制（Congestion Control）</h2>
+<div class="aux brief"><span class="aux-tag">补充 · 本节要点</span><p>拥塞控制是发送方对网络的“试探”：慢启动指数探路，拥塞避免线性增长，丢包后减半回退。</p></div>
+<p>目标与流量控制不同：<strong>流量控制防压垮接收端，拥塞控制防压垮网络</strong>。</p>
+<h3 id="s8-1" class="h3">8.1 四个阶段</h3>
+<div class="table-wrap"><table><thead><tr><th>阶段</th><th>触发</th><th>cwnd 变化规律</th></tr></thead><tbody><tr><td>慢启动 Slow Start</td><td>连接开始 / 超时后重开</td><td>每收到一个 ACK，cwnd += 1 MSS → 每 RTT <strong>翻倍</strong>（指数）</td></tr><tr><td>拥塞避免 Congestion Avoidance</td><td>cwnd ≥ ssthresh</td><td>每 RTT cwnd += 1 MSS（线性，加法增大）</td></tr><tr><td>快重传 Fast Retransmit</td><td>收到 3 个重复 ACK</td><td>立即重传丢失段，不进入慢启动</td></tr><tr><td>快恢复 Fast Recovery</td><td>快重传后</td><td>ssthresh = cwnd/2，cwnd = ssthresh（RFC 5681），进入拥塞避免</td></tr></tbody></table></div>
+<div class="codeblock" data-lang="text"><div class="cb-head"><span class="cb-lang">ASCII 图示</span><span class="cb-hint">可横向滚动</span><button class="copy" type="button" aria-label="复制此代码块">复制</button></div><pre class="cb-pre ascii"><code> cwnd
+  ^
+  |            /
+  |          /            ssthresh ───────┐ 拐点
+  |        /                             \
+  |      /                                \___
+  |    /                                     \__     &lt;- 拥塞避免：线性
+  |  /                                          \
+  | /                                            \
+  +----------------------------------------------------&gt; 时间 (RTT)
+     └── 慢启动：指数 ──┘</code></pre></div>
+<p><strong>AIMD 锯齿（Additive Increase, Multiplicative Decrease）</strong></p>
+<div class="codeblock" data-lang="text"><div class="cb-head"><span class="cb-lang">ASCII 图示</span><span class="cb-hint">可横向滚动</span><button class="copy" type="button" aria-label="复制此代码块">复制</button></div><pre class="cb-pre ascii"><code> cwnd
+  ^
+  |       /\          /\          /\        &lt;- 3 个重复 ACK：cwnd 减半后恢复
+  |      /  \        /  \        /  \
+  |     /    \      /    \      /    \
+  |    /      \    /      \    /      \
+  |   /        \  /        \  /
+  |  /          \/          \/
+  +---------------------------------------&gt; 时间</code></pre></div>
+<h3 id="s8-2" class="h3">8.2 状态机（ASCII 简图）</h3>
+<div class="codeblock" data-lang="text"><div class="cb-head"><span class="cb-lang">ASCII 图示</span><span class="cb-hint">可横向滚动</span><button class="copy" type="button" aria-label="复制此代码块">复制</button></div><pre class="cb-pre ascii"><code>          ┌───────────────┐
+          │  Slow Start   │  cwnd &lt; ssthresh：每 ACK +1 MSS（指数）
+          └───────┬───────┘
+                  │ cwnd ≥ ssthresh
+                  ▼
+          ┌───────────────┐
+   ┌─────►│  Congestion   │  cwnd 每 RTT +1 MSS（线性）
+   │      │  Avoidance    │
+   │      └───┬───────┬───┘
+   │  3 dupACK│       │ RTO 超时
+   │          ▼       ▼
+   │  ┌────────────┐ ┌──────────────────┐
+   │  │Fast Retrans│ │ ssthresh=cwnd/2, │
+   └──│ + Fast Rec.│ │ cwnd=1 MSS,      │
+      │ cwnd=ssthresh││ 回到 Slow Start  │
+      └────────────┘ └──────────────────┘</code></pre></div>
+<h3 id="s8-3" class="h3">8.3 关于初始拥塞窗口（重要校正）</h3>
+<div class="callout correction"><span class="callout-tag">校 正</span><div class="callout-body"><p><strong>校正：原文"拥塞窗口从 1 个 MSS 开始"是历史描述，不是现行标准。</strong></p>
+<ul><li>RFC 5681 允许初始窗口 <code class="ic">IW = min(4*SMSS, max(2*SMSS, 4380 字节))</code>，即最多 4 个 MSS；</li><li>RFC 6928 将其提升为 <strong>10 个 MSS</strong>（约 14600 字节），已成为主流实现默认值（Linux 3.0+）；</li><li>且现代实现的第一步通常是"<strong>分批发</strong>（pacing / initial burst 限制）"，避免一次性突发丢包（RFC 7661 等）。</li></ul>
+<p>同时，<code class="ic">ssthresh</code> 的<strong>初始值不是固定常数</strong>：RFC 5681 建议"初始设为任意大的值"，具体实现各不同。</p>
+</div></div>
+<h3 id="s8-4" class="h3">8.4 现代算法</h3>
+<div class="table-wrap"><table><thead><tr><th>算法</th><th>思路</th><th>特点</th></tr></thead><tbody><tr><td>Reno / NewReno</td><td>Loss-based，AIMD</td><td>经典教科书模型，高 BDP 下恢复慢</td></tr><tr><td>CUBIC（RFC 9438）</td><td>以时间为自变量的三次函数增长</td><td><strong>Linux 默认</strong>，与 RTT 弱相关，高速链路表现好</td></tr><tr><td>BBR（Bottleneck Bandwidth and RTT）</td><td>模型驱动，测量瓶颈带宽与最小 RTT</td><td>不以丢包为信号，在丢包率高的链路上吞吐更稳；公平性仍有争议</td></tr><tr><td>Vegas / Veno</td><td>以 RTT 延迟增长为信号</td><td>更早退让，适合低缓冲网络</td></tr></tbody></table></div>
+<div class="callout correction"><span class="callout-tag">校 正</span><div class="callout-body"><p><strong>校正：原文"拥塞控制偏保守，在高延迟高丢包网络中吞吐可能受限"——方向正确但过于笼统。</strong> 该结论主要针对<strong>传统 loss-based（Reno 类）算法</strong>；CUBIC 已显著改善高 BDP 场景，BBR 在高丢包链路上表现更好。当前瓶颈更多来自<strong>算法选择与参数配置</strong>，而非 TCP 协议本身。</p>
+</div></div>
+<div class="aux remember"><span class="aux-tag">补充 · 记住这一点</span><p>慢启动其实不慢（指数增长）；初始窗口已是 10 MSS（RFC 6928），不是 1 MSS。</p></div>
+<h2 id="s9">9. 报文段结构（Segment Format）</h2>
+<div class="aux brief"><span class="aux-tag">补充 · 本节要点</span><p>首部字段可按“端口 → 序号/确认号 → 长度与标志 → 窗口/校验和 → 选项”五段记忆。</p></div>
+<h3 id="s9-1" class="h3">9.1 首部布局（ASCII，按 32 位行对齐）</h3>
+<div class="codeblock" data-lang="text"><div class="cb-head"><span class="cb-lang">ASCII 图示</span><span class="cb-hint">可横向滚动</span><button class="copy" type="button" aria-label="复制此代码块">复制</button></div><pre class="cb-pre ascii"><code> 0                   1                   2                   3
+ 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|          Source Port          |       Destination Port        |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                        Sequence Number                        |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                     Acknowledgment Number                     |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+| DataOff |  Rsv  |C|E|U|A|P|R|S|F|           Window            |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|           Checksum            |        Urgent Pointer         |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                 Options (0 ~ 40 bytes)                        |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                          Data ...                             |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+</code></pre></div>
+<h3 id="s9-2" class="h3">9.2 字段说明</h3>
+<div class="table-wrap"><table><thead><tr><th>字段</th><th>位数</th><th>说明</th></tr></thead><tbody><tr><td>源端口 Source Port</td><td>16</td><td>发送进程端口</td></tr><tr><td>目的端口 Destination Port</td><td>16</td><td>接收进程端口</td></tr><tr><td>序列号 Sequence Number</td><td>32</td><td>本报文第一个数据字节的编号（SYN/FIN 各占 1 号）</td></tr><tr><td>确认号 Acknowledgment Number</td><td>32</td><td>期望收到的下一个字节编号；仅 ACK=1 时有效</td></tr><tr><td>数据偏移 Data Offset</td><td>4</td><td>首部长度，<strong>单位为 4 字节（32 位字）</strong>；最小值 5 → 20 字节，最大 15 → 60 字节</td></tr><tr><td>保留 Reserved</td><td>4</td><td>必须置 0（历史上曾用于 NS 位，已废弃）</td></tr><tr><td>控制位 Flags</td><td>8</td><td>CWR、ECE、URG、ACK、PSH、RST、SYN、FIN（见 9.3）</td></tr><tr><td>窗口 Window</td><td>16</td><td>接收窗口，指"从 ack 起可接收的字节数"；可经窗口扩大选项放大</td></tr><tr><td>校验和 Checksum</td><td>16</td><td>覆盖伪首部 + 首部 + 数据 + 填充</td></tr><tr><td>紧急指针 Urgent Pointer</td><td>16</td><td>配合 URG=1，指出紧急数据的末尾偏移（现代应用几乎不用）</td></tr><tr><td>选项 Options</td><td>0–40</td><td>见 9.4</td></tr><tr><td>数据 Data</td><td>可变</td><td>应用层数据，受 MSS 限制</td></tr></tbody></table></div>
+<div class="callout correction"><span class="callout-tag">校 正</span><div class="callout-body"><p><strong>校正：原文"TCP 头部固定 20 字节"应为"最小 20 字节"。</strong> 20 字节是不含选项时的最小长度；含选项时最大 60 字节（4 位数据偏移最多表示 15×4=60）。原稿已括注"不含选项"，但为免误读，明确为"最小 20、最大 60"更准确。</p>
+</div></div>
+<h3 id="s9-3" class="h3">9.3 控制位（Flags）</h3>
+<div class="table-wrap"><table><thead><tr><th>标志</th><th>全称</th><th>作用</th></tr></thead><tbody><tr><td>SYN</td><td>Synchronize</td><td>建立连接时同步序列号</td></tr><tr><td>ACK</td><td>Acknowledgment</td><td>确认号字段有效</td></tr><tr><td>FIN</td><td>Finish</td><td>发送方向数据发送完毕（半关闭）</td></tr><tr><td>RST</td><td>Reset</td><td>重置连接（端口未监听、异常、拒绝）</td></tr><tr><td>PSH</td><td>Push</td><td>提示接收方尽快将数据交付应用（多数实现按缓冲区策略自动处理）</td></tr><tr><td>URG</td><td>Urgent</td><td>紧急指针有效（极少使用）</td></tr><tr><td>ECE</td><td>ECN-Echo</td><td>显式拥塞通知（Explicit Congestion Notification, ECN）回显</td></tr><tr><td>CWR</td><td>Congestion Window Reduced</td><td>发送方已对 ECE 做出降窗响应</td></tr></tbody></table></div>
+<div class="callout correction"><span class="callout-tag">校 正</span><div class="callout-body"><p><strong>校正：原文列举"SYN、ACK、FIN、RST、PSH、URG 等"，遗漏 ECN 相关的 ECE/CWR。</strong> RFC 9293 定义 8 个控制位；早期 RFC 793 的 6 位保留字段已被拆分为 ECE/CWR 使用，NS 位（RFC 3540）于 2017 年被 RFC 8311 废弃，故现为 4 位保留。</p>
+</div></div>
+<h3 id="s9-4" class="h3">9.4 常用选项（Options）</h3>
+<div class="table-wrap"><table><thead><tr><th>选项</th><th>用途</th><th>备注</th></tr></thead><tbody><tr><td>MSS (Kind=2)</td><td>通告单段最大数据量</td><td>只在 SYN 中有效；未协商时默认 536 字节（RFC 1122/9293）；取双方较小值</td></tr><tr><td>Window Scale (Kind=3)</td><td>窗口扩大因子 0–14</td><td>只在 SYN 中协商，连接内不可变</td></tr><tr><td>SACK-Permitted (Kind=4)</td><td>声明支持 SACK</td><td>只在 SYN 中</td></tr><tr><td>SACK (Kind=5)</td><td>通报已收到的数据块</td><td>用于精确重传</td></tr><tr><td>Timestamps (Kind=8)</td><td>RTT 测量、PAWS、RTTM</td><td>现代实现默认开启；也可用于识别重复报文</td></tr><tr><td>NOP / EOL</td><td>对齐填充</td><td>仅为对齐，无实际语义</td></tr></tbody></table></div>
+<p><strong>MSS 与 MTU 的关系</strong>：<code class="ic">MSS = MTU - IP 头(20) - TCP 头(20)</code>，以太网 MTU 1500 → MSS 1460。路径 MTU 发现（Path MTU Discovery, PMTUD）失败会导致"大包黑洞"，表现为小包通、大包卡死 —— 排查时应关注 ICMP 是否被过滤。</p>
+<h3 id="s9-5" class="h3">9.5 Mermaid 版（可选，仅示意分层，不做逐位对齐）</h3>
+<div class="codeblock" data-lang="mermaid"><div class="cb-head"><span class="cb-lang">Mermaid 源码（可选）</span><button class="copy" type="button" aria-label="复制此代码块">复制</button></div><pre class="cb-pre"><code>block-beta
+  <span class="tk-kw">columns</span> 4
+  SP["源端口 16"] DP["目的端口 16"] S1["序列号 32"] S2["—"]
+  A["确认号 32"] A2["—"] A3["—"] A4["—"]
+  DO["数据偏移 4"] RV["保留 4"] FL["标志 8"] W["窗口 16"]
+  CS["校验和 16"] UP["紧急指针 16"] O["选项 + 数据"] O2["—"]</code></pre></div>
+<div class="aux remember"><span class="aux-tag">补充 · 记住这一点</span><p>最小 20 字节、最大 60 字节；数据偏移的单位是 4 字节。</p></div>
+<h2 id="s10">10. 与 UDP 的对比</h2>
+<div class="aux brief"><span class="aux-tag">补充 · 本节要点</span><p>TCP 用开销换可靠，UDP 用放弃保证换低延迟；QUIC 把可靠性做进用户态并绕开 TCP 队头阻塞。</p></div>
+<div class="table-wrap"><table><thead><tr><th>维度</th><th>TCP</th><th>UDP</th></tr></thead><tbody><tr><td>连接</td><td>面向连接，需三次握手</td><td>无连接，直接发</td></tr><tr><td>可靠性</td><td>确认 + 重传，保证可靠有序不重复</td><td>不保证；丢包、乱序、重复都可能</td></tr><tr><td>传输方式</td><td>字节流（无消息边界）</td><td>报文（保留边界，Datagram）</td></tr><tr><td>首部开销</td><td>20–60 字节</td><td>固定 8 字节</td></tr><tr><td>流量控制</td><td>有（滑动窗口 rwnd）</td><td>无</td></tr><tr><td>拥塞控制</td><td>有（cwnd / CUBIC / BBR 等）</td><td>无（由应用自行处理）</td></tr><tr><td>广播/组播</td><td>不支持</td><td>支持</td></tr><tr><td>传输效率</td><td>建立/维护有开销，长连接效率高</td><td>开销小，适合短交互</td></tr><tr><td>典型应用</td><td>HTTP/HTTPS、FTP、SMTP、SSH、数据库连接</td><td>DNS、DHCP、SNMP、VoIP、视频流、游戏、QUIC 底座</td></tr></tbody></table></div>
+<p><strong>记忆</strong>：TCP 用"确认 + 重传 + 窗口"换可靠；UDP 用"什么都不管"换低延迟与自由。</p>
+<p><strong>补充</strong>：QUIC（HTTP/3 的传输层）在 UDP 之上<strong>重造</strong>了可靠传输、拥塞控制与多路复用，但把"连接"做进用户态并消除了 TCP 层的队头阻塞 —— 是现代演进方向。</p>
+<div class="aux remember"><span class="aux-tag">补充 · 记住这一点</span><p>要可靠有序选 TCP；要低延迟、可容忍丢包或组播选 UDP；两者都要就看 QUIC。</p></div>
+<h2 id="s11">11. 适用场景与局限</h2>
+<div class="aux brief"><span class="aux-tag">补充 · 本节要点</span><p>判断该不该用 TCP，只需问两件事：能否容忍建连与重传的延迟，是否需要绝对正确与顺序。</p></div>
+<h3 id="s11-1" class="h3">11.1 适合的场景</h3>
+<ul><li><strong>Web</strong>：HTTP/1.1、HTTP/2（TCP 承载）、HTTPS（TLS over TCP）。</li><li><strong>文件与邮件</strong>：FTP、SFTP、SMTP、IMAP/POP3 —— 需要完整性。</li><li><strong>远程登录与管理</strong>：SSH、Telnet（不推荐）、RDP（走 TCP）。</li><li><strong>数据库与中间件</strong>：MySQL、PostgreSQL、Redis（长连接，请求-响应）。</li><li><strong>RPC / 服务间调用</strong>：gRPC（HTTP/2 over TCP）。</li><li>共性：<strong>能容忍一定延迟、但对正确性与顺序敏感</strong>。</li></ul>
+<h3 id="s11-2" class="h3">11.2 局限</h3>
+<ul><li><strong>建连开销</strong>：三次握手至少 1 个 RTT（TFO 可省）。</li><li><strong>队头阻塞（HOL）</strong>：一个报文段丢失，后续已到达的数据也不能交付应用；HTTP/2 的多路复用仍受 TCP 层 HOL 制约（HTTP/3 用 QUIC 解决）。</li><li><strong>拥塞控制策略差异</strong>：loss-based 算法在高丢包链路吞吐受限；跨运营商/长肥管道（Long Fat Network, LFN）对窗口与算法很敏感。</li><li><strong>不保证实时性</strong>：重传与排队带来延迟抖动（Jitter），不适合强实时。</li><li><strong>状态开销</strong>：每连接占用内核内存与四元组，海量短连接会耗尽端口与 <code class="ic">TIME_WAIT</code>。</li></ul>
+<div class="callout correction"><span class="callout-tag">校 正</span><div class="callout-body"><p><strong>校正：原文"不适合短连接高频交互"需补充现代缓解手段。</strong> 现在常用：连接池/长连接（HTTP keep-alive）、TCP Fast Open、以及 HTTP/2 多路复用（减少连接数但不消除 TCP 层 HOL）。"不适合"是相对结论，不是绝对禁令。</p>
+</div></div>
+<h3 id="s11-3" class="h3">11.3 什么时候换 UDP / QUIC</h3>
+<ul><li>实时音视频、实时游戏、直播：能容忍少量丢包，追求低延迟 → UDP（或 QUIC）。</li><li>需要自定义重传/拥塞策略（如自研可靠传输）→ 基于 UDP 实现。</li><li>需要穿透 NAT/防火墙且免握手 → QUIC（基于 UDP，但自带加密与拥塞控制）。</li></ul>
+<div class="aux remember"><span class="aux-tag">补充 · 记住这一点</span><p>“不适合短连接”是相对结论：连接池、keep-alive、TFO 都能缓解。</p></div>
+<h2 id="s12">12. 常见易错点与面试高频问法</h2>
+<div class="aux brief"><span class="aux-tag">补充 · 本节要点</span><p>这一节把前面的机制“反着问”：每个易错点背后，都是一条被记反了的定义。</p></div>
+<h3 id="s12-1" class="h3">12.1 十个高频易错点</h3>
+<ol><li><strong>ACK 号含义错位</strong>：<code class="ic">ack</code> 是"期望的下一个字节"，不是"已收到的最后一个字节"。</li><li><strong>把 SYN/FIN 当成"不占序号"</strong>：它们各消耗 1 个序列号，<code class="ic">+1</code> 关系由此而来。</li><li><strong>认为 TIME_WAIT 双方都有</strong>：只有<strong>主动关闭方</strong>进入 TIME_WAIT。</li><li><strong>把 TIME_WAIT 与 CLOSE_WAIT 混为一谈</strong>：CLOSE_WAIT 是<strong>应用没关</strong>（代码问题），TIME_WAIT 是<strong>正常等待</strong>（协议行为）。</li><li><strong>认为挥手必须四次</strong>：被动方无数据时 ACK+FIN 可合并，实际可能是三次。</li><li><strong>把 FIN 理解为"连接断开"</strong>：FIN 只是半关闭的发送方向。</li><li><strong>把 <code class="ic">rwnd</code> 和 <code class="ic">cwnd</code> 当成一回事</strong>：发送上限 = <code class="ic">min(rwnd, cwnd)</code>。</li><li><strong>"慢启动从 1 MSS 开始"</strong>：已过时，现代初始窗口为 10 MSS（RFC 6928）。</li><li><strong>"窗口字段 16 位所以最大 65535"</strong>：忽略窗口扩大选项，实际可达约 1 GiB。</li><li><strong>"TCP 保证不丢但不保证不重复/有序"</strong>：错，TCP 保证有序、去重、可靠交付（应用层看到的数据是完整的）。</li></ol>
+<h3 id="s12-2" class="h3">12.2 面试高频问法（含答题骨架）</h3>
+<div class="table-wrap"><table><thead><tr><th>问题</th><th>答题骨架（3 句话内）</th></tr></thead><tbody><tr><td>为什么三次握手不是两次？</td><td>双向 ISN 同步 + 双向可达确认 + 防历史失效 SYN；两次无法完成双向同步。</td></tr><tr><td>为什么四次挥手？</td><td>全双工两个方向独立关闭；被动方可能还有数据，ACK 与 FIN 只能分开。</td></tr><tr><td>TIME_WAIT 的作用？</td><td>保证最后 ACK 可达（对端重传 FIN 能应答）+ 让旧报文消散，避免端口复用串扰。</td></tr><tr><td>大量 TIME_WAIT 怎么办？</td><td>先判断是否正常（主动关闭方多）；<code class="ic">tcp_tw_reuse</code>（客户端方向安全）、缩短 keep-alive、用长连接/连接池。</td></tr><tr><td>大量 CLOSE_WAIT 怎么办？</td><td>应用未 close，查代码（连接泄漏、异常分支未关闭）。</td></tr><tr><td>粘包怎么解决？</td><td>TCP 是字节流无边界；应用层定长/分隔符/长度字段，或换用带边界的协议。</td></tr><tr><td>如何区分流量控制与拥塞控制？</td><td>前者防接收端溢出（rwnd，接收方通告），后者防网络过载（cwnd，发送方推断）。</td></tr><tr><td>快重传与快恢复区别？</td><td>快重传是"立即重传丢包"，快恢复是"重传后不回到慢启动，cwnd 减半继续线性增长"。</td></tr><tr><td>长肥管道为什么慢？</td><td>窗口不足 + RTT 大 → 需窗口扩大、合适的拥塞算法（CUBIC/BBR）、更大的缓冲。</td></tr><tr><td>TCP 与 UDP 如何选？</td><td>要可靠有序 → TCP；要低延迟/可容忍丢包/组播 → UDP；折中看 QUIC。</td></tr></tbody></table></div>
+<h3 id="s12-3" class="h3">12.3 抓包里常见的"异常信号"</h3>
+<div class="table-wrap"><table><thead><tr><th>现象</th><th>可能原因</th></tr></thead><tbody><tr><td>反复 SYN 无响应</td><td>服务端未监听、防火墙丢 SYN、SYN 队列满</td></tr><tr><td>SYN → 立即 RST</td><td>端口未开放；或四元组上有旧连接残留</td></tr><tr><td>大量 Dup ACK + 重传</td><td>中间链路丢包、乱序、接收窗口过小</td></tr><tr><td>窗口值持续为 0</td><td>接收端应用读取过慢（缓冲区满）</td></tr><tr><td>重传后 RTT 抖动剧烈</td><td>拥塞或路径不稳定；检查是否 RTO 频繁触发</td></tr><tr><td>只有大包卡住、小包正常</td><td>PMTUD 黑洞 / MTU 不匹配 / 中间设备分片策略</td></tr></tbody></table></div>
+<div class="aux remember"><span class="aux-tag">补充 · 记住这一点</span><p>答题先给结论，再补一句机制原因，最后点出常见误区——三句话足够。</p></div>
+<div class="aux"><span class="aux-tag">延伸 · 四组易混概念一句话辨析</span>
+<div class="diff-row"><b>rwnd ≠ cwnd</b><span>rwnd 是接收方通告的能力上限，cwnd 是发送方对网络的估算，实际可发取 min。</span></div>
+<div class="diff-row"><b>TIME_WAIT ≠ CLOSE_WAIT</b><span>前者是主动关闭方的正常等待（2MSL）；后者是被动方应用还没调用 close()，属代码问题。</span></div>
+<div class="diff-row"><b>FIN ≠ RST</b><span>FIN 是“我这个方向不发数据了”，可半关闭后继续接收；RST 是直接重置连接，数据可能被丢弃。</span></div>
+<div class="diff-row"><b>累积确认 ≠ SACK</b><span>累积 ACK 只推进到连续收到的末尾；SACK 在选项里额外告知已收到的离散块，用于精确重传。</span></div>
+</div>
+<h2 id="s13">13. 参数与概念对照表</h2>
+<div class="aux brief"><span class="aux-tag">补充 · 本节要点</span><p>这张表适合考前扫读，重点区分“谁维护”与“量级/取值”两列。</p></div>
+<div class="table-wrap"><table><thead><tr><th>名称</th><th>符号/字段</th><th>归属</th><th>量级/取值</th><th>关键说明</th></tr></thead><tbody><tr><td>序列号</td><td>seq</td><td>双方各自维护</td><td>32 位，回绕</td><td>字节级编号；SYN/FIN 各占 1</td></tr><tr><td>确认号</td><td>ack</td><td>接收方回填</td><td>32 位</td><td>期望的下一个字节</td></tr><tr><td>接收窗口</td><td>rwnd</td><td>接收方通告</td><td>16 位（可放大至 2^30）</td><td>防压垮接收端</td></tr><tr><td>拥塞窗口</td><td>cwnd</td><td>发送方计算</td><td>动态，以 MSS 为单位</td><td>防压垮网络</td></tr><tr><td>发送窗口上限</td><td>—</td><td>发送方</td><td><code class="ic">min(rwnd, cwnd)</code></td><td>两个窗口取小</td></tr><tr><td>慢启动阈值</td><td>ssthresh</td><td>发送方</td><td>初始为"任意大"，拥塞后减半</td><td>慢启动/拥塞避免分界</td></tr><tr><td>初始窗口</td><td>IW</td><td>发送方</td><td>10 MSS（RFC 6928）</td><td>旧说法为 1 MSS</td></tr><tr><td>MSS</td><td>选项</td><td>双方协商</td><td>以太网典型 1460</td><td>未协商默认 536</td></tr><tr><td>MTU</td><td>链路层</td><td>链路</td><td>以太网 1500</td><td>MSS = MTU − 40</td></tr><tr><td>重复 ACK 阈值</td><td>dupthresh</td><td>发送方</td><td>3（可调）</td><td>触发快重传</td></tr><tr><td>重传超时</td><td>RTO</td><td>发送方</td><td>动态估算，下限常 200 ms</td><td>指数退避</td></tr><tr><td>报文生存时间</td><td>MSL</td><td>协议常量</td><td>RFC 建议 2 min；实现各异</td><td>决定 TIME_WAIT</td></tr><tr><td>TIME_WAIT 时长</td><td>2MSL</td><td>主动关闭方</td><td>Linux 固定 60 s</td><td>与 RTO 无关</td></tr><tr><td>首部长度</td><td>Data Offset</td><td>报文</td><td>5–15（即 20–60 字节）</td><td>单位为 4 字节</td></tr><tr><td>窗口扩大因子</td><td>shift</td><td>选项</td><td>0–14</td><td>仅 SYN 协商</td></tr></tbody></table></div>
+<div class="aux remember"><span class="aux-tag">补充 · 记住这一点</span><p>两个窗口取小；TIME_WAIT 是 2MSL（Linux 固定 60 s），与 RTO 无关。</p></div>
+<h2 id="s14">14. 自测题（10 题）</h2>
+<div class="callout note"><span class="callout-tag">说 明</span><div class="callout-body"><p>先不看答案，用纸笔写关键数字与状态名。答案在第 15 节。</p>
+</div></div>
+<ol><li>三次握手中，客户端发出 <code class="ic">SYN(seq=x)</code>，服务端回 <code class="ic">SYN+ACK(seq=y, ack=?)</code>，客户端再回 <code class="ic">ACK(ack=?)</code>。请填空，并说明 SYN 为什么要占一个序列号。</li><li>从"双向 ISN 同步"角度解释：为什么两次握手不够、四次握手多余？</li><li>四次挥手中，为什么 ACK 与 FIN 通常分开发送？什么情况下会退化为三次？</li><li><code class="ic">TIME_WAIT</code> 出现在哪一方？它的两个作用是什么？Linux 上它的实际时长是多少？<code class="ic">tcp_fin_timeout</code> 影响的是哪个状态？</li><li>什么是半关闭（Half-Close）？在 Socket 编程里如何实现半关闭？它和 <code class="ic">close()</code> 有什么区别？</li><li>接收方收到序号 1–1000 的数据后，应回 <code class="ic">ack</code> 等于多少？收到 1–1000、2001–3000（中间缺失）时会回什么？为什么？</li><li>发送方同时有 <code class="ic">rwnd = 8000</code>、<code class="ic">cwnd = 3000</code>（单位字节），此刻最多能发多少字节未确认数据？为什么要取小？</li><li>快重传的触发条件是什么？快恢复之后 <code class="ic">cwnd</code> 与 <code class="ic">ssthresh</code> 如何设置（RFC 5681 口径）？TCP 超时又会如何改变它们？</li><li>接收窗口通告为 0 后，发送方是否可以完全静默？若不能，靠什么机制恢复？</li><li>TCP 首部最小/最大长度分别是多少？4 位数据偏移为什么最大只能表示 60 字节？窗口扩大选项能把窗口放大到什么量级？</li></ol>
+<h2 id="s15">15. 参考答案</h2>
+<ol><li><code class="ic">ack = x+1</code>；<code class="ic">ack = y+1</code>。SYN 是"同步序列号"的报文，它本身要占一个序号位置，以便与后续数据字节的编号连续、并让对方的确认有明确指向（SYN 与 FIN 都属于"消耗序列号的控制报文"）。</li><li>两次握手只能完成<strong>单向</strong>的 ISN 同步（服务端知道了客户端的 ISN，客户端仍无法确认服务端是否收到自己的 ISN、也不知道服务端的 ISN 是否被正确确认）；三次握手实现"双向同步 + 双向可达确认"；四次没有额外信息可交换——第三个 ACK 已同时完成"确认对端 SYN"和"自己的参数已被接收"。</li><li>因为 TCP 是全双工：被动方收到 FIN 只代表"对端不再发送"，自己可能还有数据在发，所以只能先 ACK；数据发完才发 FIN。若被动方当时已无数据可发，且无需等待应用处理，则 ACK 与 FIN 可合并为一个报文段，表现为三次挥手。</li><li>只出现在<strong>主动关闭方</strong>（先发 FIN 的一方）。作用：① 若最后 ACK 丢失，对端重传 FIN 时还能应答，避免对端收到 RST 而异常关闭；② 等待 2MSL 让本连接的残余报文在网络中消散，防止相同四元组的新连接误收旧报文。Linux 实际为固定 60 秒（与 RTO 无关）。<code class="ic">net.ipv4.tcp_fin_timeout</code> 影响 <strong>FIN_WAIT_2</strong> 的停留时间，不是 TIME_WAIT。</li><li>半关闭指一方关闭<strong>发送方向</strong>（发 FIN）但仍可继续<strong>接收</strong>对端数据的状态（状态机上表现为主动方 FIN_WAIT_2、被动方 CLOSE_WAIT）。实现：<code class="ic">shutdown(fd, SHUT_WR)</code>。<code class="ic">close()</code> 是关闭整个描述符（两个方向，且释放 fd），<code class="ic">shutdown</code> 只影响数据流方向、不释放描述符。</li><li>正常应回 <code class="ic">ack = 1001</code>（期望下一个字节）。若只收到 1–1000 与 2001–3000（中间空洞），累积确认仍回 <code class="ic">ack = 1001</code>（除非启用 SACK，在选项里告知已收到 2001–3000 块）；因为累积 ACK 只推进到"连续收到的最后一个字节之后"。</li><li>最多 3000 字节。<code class="ic">rwnd</code> 是接收端能力上限，<code class="ic">cwnd</code> 是发送方对网络容量的推断，实际在途数据必须同时满足两者 → 取 <code class="ic">min</code>。</li><li>触发条件：收到 3 个重复 ACK（同一 ack 号累计出现 4 次，阈值 <code class="ic">dupthresh</code> 可调）。快恢复（RFC 5681）：<code class="ic">ssthresh = max(FlightSize/2, 2*MSS)</code>，<code class="ic">cwnd = ssthresh (+3 MSS)</code>，随后进入拥塞避免（线性增长）。若发生 <strong>RTO 超时</strong>：<code class="ic">ssthresh = cwnd/2</code>，<code class="ic">cwnd</code> 重置为 1 MSS（现代实现按 RFC 6928 的 IW 也可能重启为更大初值，但标准模型按 1 MSS），重新进入慢启动。</li><li>不能静默。发送方启动<strong>持续定时器（Persist Timer）</strong>，周期性发送<strong>零窗口探测（Zero Window Probe）</strong>；接收方窗口恢复后回一个带非零窗口的 ACK，发送方据此恢复发送。</li><li>最小 20 字节、最大 60 字节。4 位数据偏移以 <strong>4 字节</strong>为单位（值 5–15），15×4 = 60。窗口扩大因子最大 14，<code class="ic">65535 × 2^14 ≈ 2^30</code> 字节（约 1 GiB）。</li></ol>
+<h2 id="s16">16. 动手验证：常用命令</h2>
+<div class="aux brief"><span class="aux-tag">补充 · 本节要点</span><p>命令的价值在于验证：先看状态分布，再抓一次握手，最后核对内核参数。</p></div>
+<div class="callout note"><span class="callout-tag">说 明</span><div class="callout-body"><p>概念记住后，用这几条命令验证最有效。命令以 Linux 为例，Windows 可用 WSL 或对应工具。</p>
+</div></div>
+<p><strong>查看连接与状态</strong></p>
+<div class="codeblock" data-lang="bash"><div class="cb-head"><span class="cb-lang">Bash</span><button class="copy" type="button" aria-label="复制此代码块">复制</button></div><pre class="cb-pre"><code><span class="tk-com"># 查看 TCP 连接状态汇总</span>
+<span class="tk-cmd">ss</span><span class="tk-opt"> -s</span>
+
+<span class="tk-com"># 查看 TCP 连接及定时器、窗口、拥塞信息</span>
+<span class="tk-cmd">ss</span><span class="tk-opt"> -ti</span>
+
+<span class="tk-com"># 统计各状态数量（TIME_WAIT / CLOSE_WAIT 排查）</span>
+<span class="tk-cmd">ss</span><span class="tk-opt"> -tan</span> | <span class="tk-cmd">awk</span> <span class="tk-str">'{print $1}'</span> | <span class="tk-cmd">sort</span> | <span class="tk-cmd">uniq</span><span class="tk-opt"> -c</span> | <span class="tk-cmd">sort</span><span class="tk-opt"> -rn</span></code></pre></div>
+<p><strong>抓包观察握手/挥手</strong></p>
+<div class="codeblock" data-lang="bash"><div class="cb-head"><span class="cb-lang">Bash</span><button class="copy" type="button" aria-label="复制此代码块">复制</button></div><pre class="cb-pre"><code><span class="tk-com"># 只抓某端口上的 SYN/FIN/ACK 交互</span>
+<span class="tk-cmd">tcpdump</span><span class="tk-opt"> -i</span> any<span class="tk-opt"> -n</span> <span class="tk-str">'tcp port 80 and (tcp[tcpflags] &amp; (tcp-syn|tcp-fin|tcp-ack) != 0)'</span></code></pre></div>
+<p><strong>关键内核参数</strong></p>
+<div class="codeblock" data-lang="bash"><div class="cb-head"><span class="cb-lang">Bash</span><button class="copy" type="button" aria-label="复制此代码块">复制</button></div><pre class="cb-pre"><code><span class="tk-cmd">sysctl</span> net.ipv4.tcp_syncookies      <span class="tk-com"># SYN Cookie 开关</span>
+<span class="tk-cmd">sysctl</span> net.ipv4.tcp_max_syn_backlog <span class="tk-com"># 半连接队列上限</span>
+<span class="tk-cmd">sysctl</span> net.core.somaxconn           <span class="tk-com"># 全连接队列上限</span>
+<span class="tk-cmd">sysctl</span> net.ipv4.tcp_fin_timeout     <span class="tk-com"># FIN_WAIT_2 超时（不是 TIME_WAIT）</span>
+<span class="tk-cmd">sysctl</span> net.ipv4.tcp_congestion_control  <span class="tk-com"># 当前拥塞算法（cubic / bbr）</span></code></pre></div>
+<div class="aux remember"><span class="aux-tag">补充 · 记住这一点</span><p>大量 TIME_WAIT 先看是不是本机主动关闭；大量 CLOSE_WAIT 直接去查代码。</p></div>
+<div class="aux"><span class="aux-tag">补充 · 排查清单（Linux）</span>
+<ol class="checklist">
+<li>看状态分布：<code>ss -tan | awk '{print $1}' | sort | uniq -c | sort -rn</code>。TIME_WAIT 多说明本机主动关闭多；CLOSE_WAIT 多说明应用没 close。</li>
+<li>看监听队列：<code>ss -lnt</code>。监听套接字的 <b>Recv-Q</b> 是当前全连接队列长度，<b>Send-Q</b> 是 backlog 上限；Recv-Q 长期贴近 Send-Q 说明 accept 跟不上。</li>
+<li>抓握手：<code>tcpdump -n -i any 'tcp[tcpflags] &amp; tcp-syn != 0'</code>，确认 SYN → SYN+ACK → ACK 三步齐全、seq/ack 满足 +1 关系。</li>
+<li>核对参数：<code>sysctl net.ipv4.tcp_congestion_control net.core.somaxconn net.ipv4.tcp_max_syn_backlog</code>。</li>
+</ol>
+<p class="aux-note">以上命令与字段含义以 Linux 为准；其他系统命令不同，观察目标一致。</p></div>
+<h2 id="s17">17. 校正记录（与原稿差异）</h2>
+<div class="aux brief"><span class="aux-tag">补充 · 本节要点</span><p>这一节是全文的“新旧说法对照”，面试失分往往就发生在这里。</p></div>
+<p>按"以 RFC 与主流实现为准、不确定不写死"的原则，对原稿做了以下修正或补充：</p>
+<div class="table-wrap"><table><thead><tr><th>#</th><th>原稿表述</th><th>校正后</th></tr></thead><tbody><tr><td>1</td><td>以 RFC 793 为基准</td><td>RFC 793 已被 <strong>RFC 9293（2022）</strong> 取代，字段与控制位定义以 9293 为准</td></tr><tr><td>2</td><td>慢启动"拥塞窗口从 1 个 MSS 开始"</td><td>历史描述；RFC 5681 允许 IW ≤ 4 MSS，<strong>RFC 6928 提升为 10 MSS</strong>，为主流默认</td></tr><tr><td>3</td><td>未说明初始 <code class="ic">ssthresh</code></td><td>初始值非固定常数，RFC 5681 建议"任意大"，实现各异</td></tr><tr><td>4</td><td>"TIME_WAIT 等待 2MSL"（未点明归属）</td><td><strong>仅主动关闭方</strong>进入 TIME_WAIT；Linux 实际固定 60 s，<code class="ic">tcp_fin_timeout</code> 管 FIN_WAIT_2</td></tr><tr><td>5</td><td>"通信结束后通过四次挥手释放连接"</td><td>四次是常见形态；被动方无数据时 ACK 与 FIN 可合并，呈三次</td></tr><tr><td>6</td><td>FIN 视为关闭连接</td><td>FIN 只关闭<strong>发送方向</strong>，引出"半关闭（Half-Close）"与 <code class="ic">shutdown(SHUT_WR)</code></td></tr><tr><td>7</td><td>"确认机制（ACK）"</td><td>补充：ACK 为<strong>累积确认</strong>，含义是"期望的下一个字节"，并普遍启用延迟确认</td></tr><tr><td>8</td><td>快重传"收到 3 个重复 ACK"</td><td>更精确：同一 ack 号累计 4 次（3 个重复 ACK），阈值 <code class="ic">dupthresh</code> 可调；补 RACK/TLP</td></tr><tr><td>9</td><td>窗口为 0"发送方停止发送"</td><td>停止的是<strong>新数据</strong>；仍需零窗口探测 + 持续定时器</td></tr><tr><td>10</td><td>"TCP 头部固定 20 字节"</td><td><strong>最小 20 字节、最大 60 字节</strong>（数据偏移 4 位、单位 4 字节）</td></tr><tr><td>11</td><td>标志位列举"SYN、ACK、FIN、RST、PSH、URG 等"</td><td>RFC 9293 共 8 位，含 <strong>ECE/CWR（ECN）</strong>；NS 位已废弃（RFC 8311）</td></tr><tr><td>12</td><td>校验和描述笼统</td><td>补：覆盖伪首部；IPv4/IPv6 下 TCP 校验和<strong>均为必需</strong>（IPv6 中可选仅指 UDP）</td></tr><tr><td>13</td><td>"序列号检测丢失和乱序"</td><td>补：32 位序号会回绕，高 BDP 链路需时间戳做 <strong>PAWS</strong>；SACK 用于精确重传</td></tr><tr><td>14</td><td>"拥塞控制偏保守，高延迟高丢包下吞吐受限"</td><td>该结论主要针对 loss-based 算法；<strong>CUBIC（Linux 默认）/ BBR</strong> 已明显改善</td></tr><tr><td>15</td><td>"不适合短连接高频交互"</td><td>补充缓解手段：keep-alive、连接池、<strong>TFO（RFC 7413）</strong>、HTTP/2 多路复用（但 TCP 层 HOL 仍在）</td></tr><tr><td>16</td><td>三次握手目的"确认双方收发能力"</td><td>核心是<strong>双向 ISN 同步 + 参数协商（MSS/窗口扩大/SACK/时间戳）</strong>，确认可达是附带结论</td></tr><tr><td>17</td><td>未提 MSS 默认值</td><td>未协商时默认 <strong>536 字节</strong>；MSS 取双方通告的较小值；<code class="ic">MSS = MTU − 40</code></td></tr></tbody></table></div>
+<p><strong>复习建议</strong></p>
+<ol><li>先背第 0 节速览 + 第 4、5 节两张图（这是 80% 的考点）。</li><li>用第 14 节自测题闭卷过一遍，错题回到对应章节。</li><li>拿 <code class="ic">tcpdump</code> 抓一次真实握手，对照 4.1 的 ASCII 图看 seq/ack 的 <code class="ic">+1</code> 关系。</li><li>最后读第 17 节校正表 —— 这些"旧说法 vs 新标准"的差异，正是面试里最容易翻车的点。</li></ol>
+<div class="aux remember"><span class="aux-tag">补充 · 记住这一点</span><p>遇到底层细节，先查 RFC 编号与实现版本，再下结论。</p></div>
+<div class="aux quiz" id="quiz"><span class="aux-tag">延伸 · 5 题自测（点击显示答案）</span>
+<p class="aux-note" style="margin-top:6px">先合上笔记自己回答，再点开对照；答案默认隐藏，打印时会自动展开。</p>
+<div class="q"><p class="q-t">1. 主动关闭方在收到对端的 FIN 之后进入哪个状态？要等多久？</p>
+<button class="reveal" type="button">显示答案</button>
+<div class="ans">进入 TIME_WAIT，回最后一个 ACK，等待 2MSL 后关闭。Linux 实现把该时长固定为 60 秒（与 RTO 无关）。</div></div>
+<div class="q"><p class="q-t">2. 接收方收到 1–1000 与 2001–3000 两段数据（中间有空洞），未启用 SACK 时回的 ack 是多少？</p>
+<button class="reveal" type="button">显示答案</button>
+<div class="ans">ack = 1001。累积确认只推进到“连续收到的最后一个字节”之后，2001–3000 的到达不会让 ack 前移。</div></div>
+<div class="q"><p class="q-t">3. 现代 Linux 的初始拥塞窗口大约是多少？依据哪个 RFC？</p>
+<button class="reveal" type="button">显示答案</button>
+<div class="ans">约 10 个 MSS（≈14600 字节），依据 RFC 6928；Linux 3.0+ 默认如此。RFC 5681 的上限是 4 个 MSS，属更早的规定。</div></div>
+<div class="q"><p class="q-t">4. 为什么 UDP 不存在“粘包”问题？</p>
+<button class="reveal" type="button">显示答案</button>
+<div class="ans">UDP 保留报文边界：一次发送对应一个数据报，接收方按数据报交付。注意接收缓冲区不足时数据报会被截断，超出部分丢弃。</div></div>
+<div class="q"><p class="q-t">5. 服务端出现大量 CLOSE_WAIT，最可能的原因是什么？</p>
+<button class="reveal" type="button">显示答案</button>
+<div class="ans">应用收到 FIN 后没有调用 close()（连接泄漏、异常分支未释放），属于代码问题，调内核参数无效。</div></div>
+</div>
+
+  </article>
+  <nav class="page-foot" aria-label="页尾导航">
+    <a href="../index.html">
+      <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="1.7"><path d="M4 5h16M4 12h16M4 19h10"/><path d="M18 16l3 3-3 3"/></svg>
+      返回资料目录
+    </a>
+    <a href="#top" id="footTop">↑ 回到顶部</a>
+    <em>本页可离线单文件打开，不依赖外网资源。</em>
+  </nav>
+</div>
+</main>
+
+<button id="toTop" type="button" aria-label="回到顶部">
+  <svg viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+</button>
+
+<script>
+(function(){
+  var root=document.documentElement, KEY='tcp-notes-theme';
+  var bar=document.getElementById('bar'), toTop=document.getElementById('toTop');
+  var sidebar=document.getElementById('sidebar'), body=document.body;
+  var heads=Array.prototype.slice.call(document.querySelectorAll('h2[id],h3[id]'));
+  var links={}; document.querySelectorAll('[data-target]').forEach(function(a){ links[a.dataset.target]=a; });
+
+  /* 主题 */
+  function applyTheme(t){
+    root.setAttribute('data-theme',t);
+    document.querySelectorAll('.theme-label').forEach(function(el){ el.textContent = t==='dark' ? '浅色模式' : '深色模式'; });
+    document.querySelectorAll('.theme-toggle').forEach(function(b){ b.setAttribute('aria-pressed', t==='dark'); });
+  }
+  var stored=null; try{ stored=localStorage.getItem(KEY); }catch(e){}
+  if(!stored){ stored = root.getAttribute('data-theme') || 'light'; }
+  applyTheme(stored);
+  document.querySelectorAll('.theme-toggle').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var next = root.getAttribute('data-theme')==='dark' ? 'light' : 'dark';
+      applyTheme(next);
+      try{ localStorage.setItem(KEY, next); }catch(e){}
+    });
+  });
+
+  /* 进度与回顶 */
+  var ticking=false;
+  function onScroll(){
+    if(ticking) return; ticking=true;
+    requestAnimationFrame(function(){
+      var h=document.documentElement, max=h.scrollHeight-window.innerHeight;
+      bar.style.width=(max>0? Math.min(100,(h.scrollTop/max)*100):0)+'%';
+      toTop.classList.toggle('show', h.scrollTop>420);
+      spy();
+      ticking=false;
+    });
+  }
+  window.addEventListener('scroll', onScroll, {passive:true});
+  window.addEventListener('resize', onScroll);
+  toTop.addEventListener('click', function(){ window.scrollTo({top:0,behavior:'smooth'}); });
+
+  /* 滚动高亮 */
+  var current=null;
+  function spy(){
+    if(!heads.length) return;
+    var y=window.scrollY+120, cur=heads[0];
+    for(var i=0;i<heads.length;i++){
+      if(heads[i].getBoundingClientRect().top+window.scrollY<=y) cur=heads[i]; else break;
+    }
+    if(current && current.id===cur.id) return;
+    current=cur;
+    Object.keys(links).forEach(function(k){
+      links[k].classList.remove('active','section-active');
+    });
+    var active=links[cur.id];
+    if(active){
+      active.classList.add('active');
+      if(cur.tagName==='H3'){
+        for(var j=heads.indexOf(cur)-1;j>=0;j--){
+          if(heads[j].tagName==='H2'){ if(links[heads[j].id]) links[heads[j].id].classList.add('section-active'); break; }
+        }
+      }
+      var r=active.getBoundingClientRect(), sr=sidebar.getBoundingClientRect();
+      if(r.top<sr.top+60 || r.bottom>sr.bottom-40){ active.scrollIntoView({block:'nearest'}); }
+    }
+  }
+
+  /* 目录抽屉 */
+  var tocToggle=document.getElementById('tocToggle');
+  function closeNav(){ body.classList.remove('nav-open'); }
+  if(tocToggle){ tocToggle.addEventListener('click', function(){ body.classList.toggle('nav-open'); }); }
+  document.getElementById('backdrop').addEventListener('click', closeNav);
+  document.querySelectorAll('#sidebar a').forEach(function(a){ a.addEventListener('click', closeNav); });
+  document.addEventListener('keydown', function(e){ if(e.key==='Escape') closeNav(); });
+
+  /* 复制 */
+  function copyText(text){
+    var ta=document.createElement('textarea');
+    ta.value=text; ta.setAttribute('readonly',''); ta.style.position='fixed'; ta.style.top='-1000px'; ta.style.opacity='0';
+    document.body.appendChild(ta); ta.select();
+    var ok=false;
+    try{ ok = document.execCommand('copy'); }catch(e){ ok=false; }
+    document.body.removeChild(ta);
+    if(ok) return Promise.resolve();
+    if(navigator.clipboard && window.isSecureContext && navigator.clipboard.writeText){
+      return navigator.clipboard.writeText(text);
+    }
+    return Promise.reject(new Error('copy failed'));
+  }
+  document.querySelectorAll('.copy').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var pre=btn.closest('.codeblock').querySelector('pre');
+      copyText(pre.textContent).then(function(){
+        btn.classList.add('done'); btn.textContent='已复制';
+        setTimeout(function(){ btn.classList.remove('done'); btn.textContent='复制'; },2200);
+      }).catch(function(){
+        btn.textContent='复制失败'; setTimeout(function(){ btn.textContent='复制'; },2200);
+      });
+    });
+  });
+
+  /* 横向溢出提示 */
+  document.querySelectorAll('.codeblock pre').forEach(function(pre){
+    if(pre.scrollWidth > pre.clientWidth + 2){ pre.closest('.codeblock').classList.add('scrollable'); }
+  });
+
+  /* 打印 */
+  var printBtn=document.getElementById('printBtn');
+  if(printBtn){ printBtn.addEventListener('click', function(){ window.print(); }); }
+
+  /* 标题锚点 */
+  heads.forEach(function(h){
+    var a=document.createElement('a');
+    a.className='anchor-link'; a.href='#'+h.id; a.textContent='#'; a.setAttribute('aria-label','本节链接');
+    h.appendChild(a);
+  });
+
+  /* 自测答案展开（打印时自动展开） */
+  document.querySelectorAll('.reveal').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var q=btn.closest('.q');
+      var open=q.classList.toggle('open');
+      btn.textContent = open ? '收起答案' : '显示答案';
+    });
+  });
+
+  /* 术语悬停提示：仅首次出现，避免打断阅读 */
+  var TERMS=[
+    ['ssthresh','慢启动阈值：慢启动（指数）与拥塞避免（线性）的分界点。'],
+    ['dupthresh','重复 ACK 阈值：达到即触发快速重传，通常为 3。'],
+    ['PMTUD','路径 MTU 发现：探测端到端最小 MTU，失败会造成“大包黑洞”。'],
+    ['DSACK','重复 SACK：用 SACK 选项识别收到的重复报文。'],
+    ['SACK','选择性确认：在选项里标明已收到的数据块，用于精确重传。'],
+    ['PAWS','防序列号回绕：用时间戳选项识别过期报文。'],
+    ['AIMD','加法增大、乘法减小：经典拥塞控制的收敛策略。'],
+    ['cwnd','拥塞窗口：发送方推算的网络可承载量，单位为 MSS。'],
+    ['rwnd','接收窗口：接收方通告的可用缓冲字节数。'],
+    ['MSS','最大报文段长度：单段可承载的最大数据字节数（不含 TCP 首部），以太网典型 1460。'],
+    ['MTU','最大传输单元：链路层单帧可承载的最大 IP 包长度，以太网典型 1500。'],
+    ['ISN','初始序列号：建立连接时随机选取的起始序号。'],
+    ['RTO','重传超时：等待 ACK 的时限，由 RTT 采样动态估算。'],
+    ['RTT','往返时延：报文发出到收到确认的时间。'],
+    ['BDP','带宽时延积：链路上“在途数据”的容量上限。'],
+    ['HOL','队头阻塞：前序报文未到，导致后续已到数据也无法交付。'],
+    ['ECN','显式拥塞通知：由路由器标记拥塞，而不必依赖丢包。'],
+    ['TFO','TCP Fast Open：允许 SYN 携带数据，省去一次 RTT（RFC 7413）。'],
+    ['SWS','糊涂窗口综合症：小窗口/小报文频繁发送导致效率低下。'],
+    ['RACK','基于时间的丢包检测：Linux 现代实现，比数重复 ACK 更准。'],
+    ['TLP','尾部丢失探测：用零星探测包避免干等 RTO。'],
+    ['MSL','报文最大生存时间：TIME_WAIT 时长为其两倍。'],
+    ['LFN','长肥管道：高带宽 × 高时延的链路，对窗口与算法敏感。'],
+    ['QUIC','基于 UDP 的传输协议（HTTP/3 底座），自带可靠传输、拥塞控制与多路复用。']
+  ].sort(function(a,b){ return b[0].length-a[0].length; });
+  (function(){
+    var content=document.getElementById('content');
+    if(!content || !document.createTreeWalker) return;
+    var skip={PRE:1,CODE:1,A:1,BUTTON:1,ABBR:1,H1:1,H2:1,H3:1,SCRIPT:1,STYLE:1,SPAN:1};
+    var walker=document.createTreeWalker(content, NodeFilter.SHOW_TEXT, {
+      acceptNode:function(n){
+        if(!n.nodeValue || !n.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
+        if(skip[n.parentNode.nodeName]) return NodeFilter.FILTER_REJECT;
+        return NodeFilter.FILTER_ACCEPT;
+      }
+    });
+    var nodes=[], used={};
+    while(walker.nextNode()) nodes.push(walker.currentNode);
+    nodes.forEach(function(node){
+      for(var i=0;i<TERMS.length;i++){
+        var w=TERMS[i][0]; if(used[w]) continue;
+        var idx=node.nodeValue.indexOf(w); if(idx<0) continue;
+        var b=node.nodeValue.charAt(idx-1), a=node.nodeValue.charAt(idx+w.length);
+        if(/[A-Za-z0-9_]/.test(b) || /[A-Za-z0-9_]/.test(a)) continue;
+        var r=document.createRange();
+        r.setStart(node,idx); r.setEnd(node,idx+w.length);
+        var ab=document.createElement('abbr');
+        ab.className='term'; ab.title=TERMS[i][1]; ab.textContent=w;
+        r.deleteContents(); r.insertNode(ab);
+        used[w]=1; break;
+      }
+    });
+  })();
+
+  onScroll();
+})();
+</script>
+</body>
+</html>
