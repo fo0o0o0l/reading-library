@@ -20,11 +20,11 @@ d:\手机看\
 
 ### 方式一：公网访问（推荐）
 
-部署成功后访问：
+已部署在 GitHub Pages，任何网络环境直接打开：
 
-> 部署地址：见下方「发布到公网」一节的最终输出（或直接问维护者要链接）。
+> **https://fo0o0o0l.github.io/reading-library/**
 
-任何网络环境都能打开，不需要和电脑在同一 Wi-Fi。
+仓库地址：`https://github.com/fo0o0o0l/reading-library`（公开仓库）。
 
 ### 方式二：家里同一 Wi-Fi（备用）
 
@@ -72,53 +72,51 @@ http://192.168.1.23:8000
 
 ## 发布到公网
 
-### 方案 A：GitHub Pages（子路径兼容，推荐）
+本站已通过 **GitHub Pages** 发布（仓库 `fo0o0o0l/reading-library`，`main` 分支根目录，已生成 `https://fo0o0o0l.github.io/reading-library/`）。站点使用相对路径，部署在 `/reading-library/` 子路径下可正常工作；如改仓库名，子路径会随之变化，无需改代码。
 
-首次发布（在 `d:\手机看` 下）：
+### 以后新增资料后怎么重新发布
+
+在 `d:\手机看` 下执行：
 
 ```powershell
-git init
 git add index.html notes README.md
-git commit -m "Add mobile reading library"
-gh auth login          # 需要你本人完成浏览器授权
-gh repo create reading-library --public --source=. --push
-gh api -X POST repos/{owner}/reading-library/pages -f "source[branch]=main" -f "source[path]=/"
-```
-
-然后访问 `https://<你的GitHub用户名>.github.io/reading-library/`。站点使用相对路径，部署在 `/reading-library/` 子路径下可正常工作。
-
-以后更新：
-
-```powershell
-git add -A
 git commit -m "Add notes: 新资料标题"
 git push
 ```
 
 GitHub Pages 会自动重建，通常一两分钟后生效。
 
-### 方案 B：Vercel
-
-首次发布：
+### 首次发布（已完成，供重装时参考）
 
 ```powershell
-npx --yes vercel login    # 需要你本人完成邮箱/浏览器授权
+git init -b main
+git add index.html notes README.md .nojekyll
+git commit -m "Add mobile-first reading library"
+git remote add origin https://github.com/fo0o0o0l/reading-library.git
+git push -u origin main
+```
+
+然后在仓库 **Settings → Pages** 中选择 `Deploy from a branch`、`main`、`/ (root)`，或在已登录 `gh` 的环境中执行：
+
+```powershell
+gh api -X POST repos/{owner}/{repo}/pages -f "source[branch]=main" -f "source[path]=/"
+```
+
+### 备选：Vercel
+
+```powershell
+npx --yes vercel login
 npx --yes vercel --prod
 ```
 
-按提示确认项目名与目录（直接回车使用当前目录即可），命令结束会输出公网地址。
-
-以后更新：
-
-```powershell
-npx --yes vercel --prod
-```
+`vercel login` 需要本人完成浏览器/邮箱授权；授权后 `vercel --prod` 会输出公网地址。后续更新重新执行 `npx --yes vercel --prod` 即可。
 
 ### 需要用户动手的情况
 
-- `gh auth login`：需要浏览器打开 GitHub 授权页并输入一次性设备码；或提供已授权的 `GH_TOKEN`。
-- `vercel login`：需要按提示在浏览器/邮箱确认；或提供 `VERCEL_TOKEN`。
-- 创建仓库、开启 Pages 属于公开发布动作，需本人确认。
+- 当前机器未安装 `gh`，但 Git 凭据管理器已有 GitHub 账号，本次发布直接复用了该账号的授权。
+- 如果以后授权失效：`git push` 会提示登录，按 Git Credential Manager 弹窗完成浏览器授权即可。
+- 若改用 Vercel：`vercel login` 需要本人完成授权，或自行提供 `VERCEL_TOKEN`。
+
 
 ## 说明与注意
 
