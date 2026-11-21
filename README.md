@@ -10,7 +10,9 @@
 d:\手机看\
 ├─ index.html                    资料索引（卡片列表 + 标签筛选）
 ├─ notes\
-│  └─ tcp-protocol-notes.html    TCP 协议学习笔记（自包含静态页）
+│  ├─ tcp-protocol-notes.html    TCP 协议学习笔记（自包含静态页）
+│  ├─ http-protocol-notes.html   HTTP 协议笔记（自包含静态页）
+│  └─ http-protocol-notes.md     HTTP 笔记的 Markdown 源稿（仅存档，未被站点引用）
 └─ README.md                     本文件
 ```
 
