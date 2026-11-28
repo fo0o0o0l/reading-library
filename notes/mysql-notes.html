@@ -1,0 +1,3503 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>MySQL 数据库操作笔记 · 九篇合集</title>
+  <style>
+    /* ======================== 主题与变量配置（One Dark） ======================== */
+    :root {
+      /* 背景层次：页面 → 卡片/侧栏 → 次级块 → 代码块 */
+      --bg-page: #21252b;
+      --bg-surface: #282c34;
+      --bg-subtle: #2f343e;
+      --bg-code: #1b1f27;
+      /* 文字 */
+      --text-primary: #dcdfe4;
+      --text-secondary: #abb2bf;
+      --text-muted: #8b919d;
+      --border-color: #3b4048;
+      /* One Dark 强调色 */
+      --accent: #61afef;          /* 蓝：链接、导航、徽章 */
+      --accent-fg: #1b1f27;       /* 强调色底上的文字 */
+      --accent-soft: rgba(97, 175, 239, 0.14);
+      --orange: #e5c07b;          /* 黄：注意/提示 */
+      --orange-soft: rgba(229, 192, 123, 0.12);
+      --green: #98c379;           /* 绿：正确/理解 */
+      --green-soft: rgba(152, 195, 121, 0.12);
+      --red: #e06c75;             /* 红：禁止/风险 */
+      --red-soft: rgba(224, 108, 117, 0.13);
+      --purple: #c678dd;          /* 紫：进阶/原理 */
+      --purple-soft: rgba(198, 120, 221, 0.13);
+      --code-inline: #d19a66;     /* 行内代码文字 */
+      --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.35);
+      --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.42);
+      --radius: 12px;
+      --sidebar-width: 274px;
+    }
+
+    /* 备用浅色（One Light），点右上角切换 */
+    [data-theme="light"] {
+      --bg-page: #fafafa;
+      --bg-surface: #ffffff;
+      --bg-subtle: #f0f0f1;
+      --bg-code: #282c34;
+      --text-primary: #383a42;
+      --text-secondary: #4b5263;
+      --text-muted: #7f848e;
+      --border-color: #e2e2e4;
+      --accent: #4078f2;
+      --accent-fg: #ffffff;
+      --accent-soft: #eef2ff;
+      --orange: #c18401;
+      --orange-soft: #fdf6e3;
+      --green: #50a14f;
+      --green-soft: #edf7ed;
+      --red: #e45649;
+      --red-soft: #fdeceb;
+      --purple: #a626a4;
+      --purple-soft: #f8ecf8;
+      --code-inline: #986801;
+      --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06);
+      --shadow-md: 0 6px 20px rgba(15, 23, 42, 0.08);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    [hidden] { display: none !important; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", sans-serif;
+      background-color: var(--bg-page);
+      color: var(--text-primary);
+      line-height: 1.78;
+      font-size: 15.5px;
+      transition: background-color 0.25s, color 0.25s;
+    }
+
+    /* 顶部阅读进度条 */
+    #reading-progress {
+      position: fixed;
+      top: 0; left: 0;
+      height: 3px; width: 0%;
+      background: linear-gradient(90deg, var(--accent), var(--orange));
+      z-index: 1000;
+      transition: width 0.1s linear;
+    }
+
+    .container { max-width: 960px; margin: 0 auto; }
+
+    /* ======================== 首页：封面 + 卡片墙 ======================== */
+    .home-main { padding: 34px 38px 70px; }
+
+    .theme-float {
+      position: fixed;
+      right: 22px; top: 20px;
+      z-index: 950;
+      padding: 8px 14px;
+      border: 1px solid var(--border-color);
+      border-radius: 999px;
+      background: var(--bg-surface);
+      color: var(--text-secondary);
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: var(--shadow-sm);
+      transition: all 0.18s;
+    }
+
+    .theme-float:hover { color: var(--accent); border-color: var(--accent); }
+
+    .hero {
+      background: linear-gradient(135deg, #313741 0%, #37404e 48%, #4a3f60 100%);
+      color: var(--text-primary);
+      padding: 32px 34px;
+      border-radius: 16px;
+      border: 1px solid var(--border-color);
+      box-shadow: var(--shadow-md);
+      margin-bottom: 26px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(120% 80% at 88% 0%, rgba(198, 120, 221, 0.22), transparent 62%),
+                  radial-gradient(90% 70% at 0% 100%, rgba(97, 175, 239, 0.16), transparent 60%);
+      pointer-events: none;
+    }
+
+    .hero::after {
+      content: attr(data-mark);
+      position: absolute;
+      right: 20px; bottom: -26px;
+      font-size: 88px;
+      font-weight: 900;
+      letter-spacing: -0.04em;
+      color: var(--accent);
+      opacity: 0.14;
+      pointer-events: none;
+      line-height: 1;
+    }
+
+    .hero-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; position: relative; }
+
+    .hero-tag {
+      font-size: 12px;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 999px;
+      background: rgba(97, 175, 239, 0.16);
+      color: #9ecbff;
+      border: 1px solid rgba(97, 175, 239, 0.28);
+    }
+
+    .hero h1 { font-size: 28px; line-height: 1.3; margin-bottom: 10px; position: relative; }
+    .hero p { font-size: 15px; max-width: 620px; color: var(--text-secondary); position: relative; }
+
+    [data-theme="light"] .hero {
+      background: linear-gradient(135deg, #f4f5f7 0%, #f7f4fb 48%, #eef3fb 100%);
+    }
+    [data-theme="light"] .hero-tag { background: rgba(64, 120, 242, 0.1); color: #4078f2; border-color: rgba(64, 120, 242, 0.22); }
+    [data-theme="light"] .hero::after { color: var(--accent); opacity: 0.12; }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .entry-card {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+      padding: 20px 22px 19px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-sm);
+      text-decoration: none;
+      color: inherit;
+      transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+    }
+
+    .entry-card:hover {
+      transform: translateY(-3px);
+      box-shadow: var(--shadow-md);
+      border-color: var(--accent);
+    }
+
+    .entry-card:hover .entry-go { color: var(--accent); transform: translateX(3px); }
+
+    .entry-top { display: flex; align-items: center; justify-content: space-between; }
+
+    .entry-num {
+      font-size: 11.5px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      color: var(--accent-fg);
+      background: var(--accent);
+      padding: 2px 9px;
+      border-radius: 7px;
+    }
+
+    .entry-go {
+      color: var(--text-muted);
+      font-size: 16px;
+      line-height: 1;
+      transition: color 0.18s, transform 0.18s;
+    }
+
+    .entry-card h3 { font-size: 16.5px; line-height: 1.45; color: var(--text-primary); }
+    .entry-card p { font-size: 13.6px; line-height: 1.7; color: var(--text-secondary); flex: 1; }
+    .entry-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 2px; }
+
+    .home-footer {
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 12.8px;
+      padding: 26px 0 0;
+    }
+
+    /* 返回复习阅读库 */
+    .lib-back {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--accent);
+      background: var(--accent-soft);
+      padding: 5px 12px;
+      border-radius: 8px;
+      text-decoration: none;
+      margin-bottom: 14px;
+    }
+
+    .lib-back:hover { background: var(--accent); color: var(--accent-fg); }
+
+    /* ======================== 阅读页：侧边栏 ======================== */
+    .mobile-bar {
+      display: none;
+      position: sticky;
+      top: 0; z-index: 800;
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border-color);
+      padding: 10px 14px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .mobile-bar strong {
+      font-size: 13.5px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      min-width: 0;
+    }
+
+    .menu-toggle {
+      padding: 6px 12px;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      background: var(--bg-subtle);
+      color: var(--text-primary);
+      cursor: pointer;
+      font-size: 12.5px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .layout { display: flex; min-height: 100vh; }
+
+    .sidebar {
+      position: fixed;
+      top: 0; left: 0;
+      width: var(--sidebar-width);
+      height: 100vh;
+      background: var(--bg-surface);
+      border-right: 1px solid var(--border-color);
+      padding: 20px 15px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      z-index: 900;
+      transition: transform 0.25s ease, background-color 0.25s;
+    }
+
+    .brand { padding-bottom: 12px; border-bottom: 1px solid var(--border-color); }
+
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 12.3px;
+      font-weight: 700;
+      color: var(--accent);
+      background: var(--accent-soft);
+      padding: 4px 10px;
+      border-radius: 8px;
+      text-decoration: none;
+      margin-bottom: 10px;
+    }
+
+    .back-btn:hover { background: var(--accent); color: var(--accent-fg); }
+
+    .brand-badge {
+      display: inline-flex;
+      align-items: center;
+      font-size: 11.5px;
+      font-weight: 700;
+      color: var(--accent);
+      background: var(--accent-soft);
+      padding: 2px 9px;
+      border-radius: 999px;
+      margin-bottom: 6px;
+    }
+
+    .brand h1 { font-size: 16.5px; line-height: 1.4; color: var(--text-primary); }
+    .brand p { font-size: 12.2px; color: var(--text-muted); margin-top: 3px; }
+
+    .nav-list { list-style: none; display: flex; flex-direction: column; gap: 3px; }
+
+    .nav-list a {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 6.5px 10px;
+      border-radius: 8px;
+      text-decoration: none;
+      color: var(--text-secondary);
+      font-size: 13.2px;
+      font-weight: 500;
+      transition: all 0.15s ease;
+    }
+
+    .nav-list a:hover { background: var(--bg-subtle); color: var(--accent); }
+    .nav-list a.active { background: var(--accent-soft); color: var(--accent); font-weight: 700; }
+
+    .nav-num {
+      font-size: 11px;
+      font-weight: 700;
+      width: 20px; height: 20px;
+      margin-top: 2px;
+      border-radius: 6px;
+      background: var(--bg-subtle);
+      color: var(--text-muted);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .nav-list a.active .nav-num { background: var(--accent); color: var(--accent-fg); }
+
+    .sidebar-footer {
+      margin-top: auto;
+      padding-top: 12px;
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+    }
+
+    .theme-btn {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      background: var(--bg-surface);
+      color: var(--text-primary);
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+
+    .theme-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* ======================== 阅读页：主内容 ======================== */
+    .main {
+      margin-left: var(--sidebar-width);
+      flex: 1;
+      padding: 30px 38px 80px;
+      max-width: calc(100% - var(--sidebar-width));
+    }
+
+    section.chapter {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+      padding: 24px 28px;
+      margin-bottom: 22px;
+      box-shadow: var(--shadow-sm);
+      scroll-margin-top: 20px;
+    }
+
+    .chapter-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 14px;
+      padding-bottom: 12px;
+      border-bottom: 2px solid var(--bg-subtle);
+      flex-wrap: wrap;
+    }
+
+    .chapter-badge {
+      background: var(--accent);
+      color: var(--accent-fg);
+      font-size: 13px;
+      font-weight: 800;
+      padding: 4px 10px;
+      border-radius: 8px;
+      flex-shrink: 0;
+    }
+
+    .chapter h2 { font-size: 21px; line-height: 1.4; color: var(--text-primary); }
+
+    .chapter h3 {
+      font-size: 16.5px;
+      color: var(--text-primary);
+      margin: 22px 0 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .chapter h3::before {
+      content: "";
+      display: inline-block;
+      width: 4px; height: 16px;
+      border-radius: 2px;
+      background: var(--orange);
+      flex-shrink: 0;
+    }
+
+    .chapter h4 { font-size: 15px; color: var(--text-primary); margin: 18px 0 8px; }
+
+    .chapter p { margin-bottom: 12px; color: var(--text-secondary); }
+    .chapter ul, .chapter ol { padding-left: 22px; margin-bottom: 14px; color: var(--text-secondary); }
+    .chapter li { margin-bottom: 6px; }
+    .chapter strong { color: var(--text-primary); }
+    .chapter a { color: var(--accent); text-decoration: none; border-bottom: 1px solid var(--accent-soft); }
+    .chapter a:hover { border-bottom-color: var(--accent); }
+
+    code {
+      font-family: "Cascadia Code", "JetBrains Mono", Consolas, monospace;
+      font-size: 0.9em;
+      background: var(--bg-subtle);
+      color: var(--code-inline);
+      padding: 2px 6px;
+      border-radius: 5px;
+    }
+
+    /* 提示框 */
+    .callout {
+      padding: 13px 17px;
+      border-radius: 10px;
+      margin: 14px 0;
+      border-left: 4px solid var(--accent);
+      background: var(--accent-soft);
+      font-size: 14.3px;
+      color: var(--text-secondary);
+    }
+
+    .callout.warn { border-left-color: var(--orange); background: var(--orange-soft); }
+    .callout.good { border-left-color: var(--green); background: var(--green-soft); }
+    .callout.danger { border-left-color: var(--red); background: var(--red-soft); }
+    .callout.deep { border-left-color: var(--purple); background: var(--purple-soft); }
+
+    .callout-title {
+      font-weight: 700;
+      color: var(--text-primary);
+      display: block;
+      margin-bottom: 3px;
+      font-size: 13.8px;
+    }
+
+    /* 补充说明（原笔记里的“什么时候用”等短句） */
+    .hint {
+      font-size: 14.2px;
+      color: var(--text-secondary);
+      margin: 0 0 12px;
+      padding: 9px 13px;
+      background: var(--bg-subtle);
+      border-radius: 8px;
+    }
+
+    .hint-label {
+      display: inline-block;
+      font-size: 11.5px;
+      font-weight: 700;
+      color: var(--accent);
+      background: var(--accent-soft);
+      padding: 1px 8px;
+      border-radius: 999px;
+      margin-right: 7px;
+      vertical-align: 1px;
+    }
+
+    /* 胶囊标签 */
+    .pill {
+      display: inline-block;
+      font-size: 11.5px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+
+    .pill.blue { background: var(--accent-soft); color: var(--accent); }
+    .pill.green { background: var(--green-soft); color: var(--green); }
+    .pill.red { background: var(--red-soft); color: var(--red); }
+    .pill.orange { background: var(--orange-soft); color: var(--orange); }
+    .pill.purple { background: var(--purple-soft); color: var(--purple); }
+
+    /* 表格 */
+    .table-wrap {
+      overflow-x: auto;
+      margin: 14px 0;
+      border-radius: 10px;
+      border: 1px solid var(--border-color);
+    }
+
+    table { width: 100%; border-collapse: collapse; font-size: 14px; text-align: left; }
+
+    th {
+      background: var(--bg-subtle);
+      color: var(--text-primary);
+      font-weight: 700;
+      padding: 10px 13px;
+      border-bottom: 1px solid var(--border-color);
+      white-space: nowrap;
+    }
+
+    td {
+      padding: 10px 13px;
+      border-bottom: 1px solid var(--border-color);
+      color: var(--text-secondary);
+      vertical-align: top;
+    }
+
+    tr:last-child td { border-bottom: none; }
+
+    /* 代码块（One Dark 编辑器配色，两种主题下保持一致） */
+    .code-block {
+      position: relative;
+      background: var(--bg-code);
+      color: #abb2bf;
+      border-radius: 10px;
+      margin: 12px 0 16px;
+      overflow: hidden;
+      border: 1px solid #3b4048;
+    }
+
+    .code-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 14px;
+      background: #21252b;
+      border-bottom: 1px solid #3b4048;
+      font-size: 11.5px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #7f848e;
+    }
+
+    .copy-btn {
+      background: #323842;
+      border: none;
+      color: #abb2bf;
+      padding: 3px 10px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 12px;
+      letter-spacing: 0;
+      text-transform: none;
+      transition: background 0.15s;
+    }
+
+    .copy-btn:hover { background: var(--accent); color: #1b1f27; }
+    .copy-btn.done { background: var(--green); color: #1b1f27; }
+
+    pre {
+      padding: 14px 16px;
+      overflow-x: auto;
+      font-family: "Cascadia Code", "JetBrains Mono", Consolas, monospace;
+      font-size: 13.5px;
+      line-height: 1.65;
+    }
+
+    pre code { background: transparent; color: inherit; padding: 0; font-size: inherit; }
+
+    /* One Dark 语法色板 */
+    .kw  { color: #c678dd; font-weight: 600; }   /* 关键字：紫 */
+    .fn  { color: #61afef; }                     /* 函数名：蓝 */
+    .str { color: #98c379; }                     /* 字符串：绿 */
+    .num { color: #d19a66; }                     /* 数字：橙 */
+    .cmt { color: #5c6370; font-style: italic; } /* 注释：灰 */
+
+    .doc-footer {
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 12.8px;
+      padding: 6px 0 20px;
+    }
+
+    /* ======================== 响应式 & 打印 ======================== */
+    @media (max-width: 1100px) {
+      .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 960px) {
+      .mobile-bar { display: flex; }
+      .sidebar { transform: translateX(-100%); }
+      .sidebar.open { transform: translateX(0); box-shadow: 0 0 40px rgba(0, 0, 0, 0.35); }
+      .main { margin-left: 0; max-width: 100%; padding: 18px 14px 60px; }
+      .home-main { padding: 20px 14px 50px; }
+      .theme-float { display: none; }
+      section.chapter { padding: 18px 16px; scroll-margin-top: 56px; }
+      .chapter h2 { font-size: 19px; }
+      .hero { padding: 24px 20px; }
+      .hero h1 { font-size: 23px; }
+      .hero::after { font-size: 64px; right: 14px; }
+    }
+
+    @media (max-width: 700px) {
+      .cards { grid-template-columns: minmax(0, 1fr); }
+    }
+
+    @media print {
+      .sidebar, .mobile-bar, #reading-progress, .copy-btn, .code-head, .theme-float { display: none !important; }
+      .main, .home-main { margin-left: 0; max-width: 100%; padding: 0; }
+      section.chapter { break-inside: avoid; box-shadow: none; }
+      .entry-card { break-inside: avoid; }
+
+      /* 打印时切成浅底，省墨且保证对照度 */
+      :root {
+        --bg-page: #ffffff; --bg-surface: #ffffff; --bg-subtle: #f4f4f5; --bg-code: #ffffff;
+        --text-primary: #1a1a1a; --text-secondary: #333333; --text-muted: #666666;
+        --border-color: #dddddd; --accent: #0b5f7a; --accent-fg: #ffffff;
+        --accent-soft: #eef6f9; --code-inline: #8a4b00;
+      }
+      body { background: #fff; }
+      .hero { background: #fff !important; border: 1px solid #ddd; color: #1a1a1a; }
+      .hero::before, .hero::after { display: none; }
+      .hero-tag { background: #f0f0f0; color: #333; border-color: #ddd; }
+      .code-block { background: #fff; border-color: #ddd; color: #1a1a1a; }
+      .kw { color: #8b3a9e; } .fn { color: #1c5fb8; }
+      .str { color: #2f7a2f; } .num { color: #9a5a00; } .cmt { color: #777; }
+    }
+  </style>
+</head>
+<body>
+  <!-- 阅读进度条 -->
+  <div id="reading-progress"></div>
+
+  <!-- ==================== 首页：卡片墙 ==================== -->
+  <section id="view-home">
+    <button class="theme-float" data-theme-toggle type="button">切换到深色</button>
+    <main class="home-main">
+      <div class="container">
+        <a class="lib-back" href="../index.html">← 复习阅读库</a>
+        <header class="hero" data-mark="MYSQL">
+          <div class="hero-tags">
+            <span class="hero-tag">9 篇合集</span>
+            <span class="hero-tag">DDL / DML / DQL / DCL</span>
+            <span class="hero-tag">函数 · 事务 · 约束 · 多表</span>
+            <span class="hero-tag">离线单文件</span>
+          </div>
+          <h1>MySQL 数据库操作笔记</h1>
+          <p>
+            从建库建表到并发事务控制，九篇笔记按<strong>「先会用 → 再懂规矩 → 最后会避坑」</strong>的顺序排好。
+            点任意一张卡片进入正文，左侧目录可跳小节，读完整理点「返回目录」回到这里。
+          </p>
+        </header>
+
+        <div class="cards" id="card-grid"></div>
+
+        <footer class="home-footer">
+          九篇笔记整合成一个可直接打开的阅读版；每篇正文顶部的「返回目录」回到这一页。
+        </footer>
+      </div>
+    </main>
+  </section>
+
+  <!-- ==================== 阅读页 ==================== -->
+  <section id="view-reader" hidden>
+    <div class="mobile-bar">
+      <a class="back-btn" href="#/" style="margin-bottom:0;">← 返回目录</a>
+      <strong id="mobile-title"></strong>
+      <button class="menu-toggle" type="button" onclick="toggleSidebar()">本篇目录</button>
+    </div>
+
+    <div class="layout">
+      <aside class="sidebar" id="sidebar">
+        <div class="brand">
+          <a class="back-btn" href="#/">← 返回目录</a>
+          <span class="brand-badge" id="brand-num">01</span>
+          <h1 id="brand-title"></h1>
+          <p id="brand-sub"></p>
+        </div>
+
+        <ul class="nav-list" id="nav-list"></ul>
+
+        <div class="sidebar-footer">
+          <a class="lib-back" href="../index.html" style="justify-content:center;margin-bottom:0;">← 复习阅读库</a>
+          <button class="theme-btn" data-theme-toggle type="button">切换到深色</button>
+        </div>
+      </aside>
+
+      <main class="main">
+        <div class="container" id="doc-body"></div>
+      </main>
+    </div>
+  </section>
+
+  <script type="text/plain" data-doc="01">
+# 01 · DDL：数据定义
+
+DDL（数据定义语言）管数据库的**结构**：建库、建表、加列、删表。它只搭骨架，不往表里放数据。
+
+后面四份笔记共用一套示例：`students`（学生）、`courses`（课程）、`scores`（选课成绩）。
+
+> SQL 关键字不区分大小写，`CREATE` 和 `create` 是同一件事；本文两种写法都会出现，自己写时同一份脚本里统一一种就好。
+
+---
+
+## 一、建库、切库
+
+```sql
+CREATE DATABASE IF NOT EXISTS school DEFAULT CHARACTER SET utf8mb4;
+USE school;
+```
+
+执行结果：多出一个 `school` 库并切换进去，后面的建表都建在这里。
+
+---
+
+## 二、建表
+
+```sql
+CREATE TABLE students (
+  student_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  name       VARCHAR(20)  NOT NULL,
+  gender     ENUM('男','女') NOT NULL DEFAULT '男',
+  class_name VARCHAR(30)  NOT NULL,
+  email      VARCHAR(100) UNIQUE
+);
+
+CREATE TABLE courses (
+  course_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  title     VARCHAR(50) NOT NULL UNIQUE,
+  credit    DECIMAL(3,1) NOT NULL DEFAULT 2.0,
+  teacher   VARCHAR(20) NOT NULL
+);
+
+CREATE TABLE scores (
+  score_id   BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  student_id INT UNSIGNED NOT NULL,
+  course_id  INT UNSIGNED NOT NULL,
+  score      DECIMAL(4,1),
+  exam_date  DATE NOT NULL,
+  UNIQUE KEY uk_stu_course (student_id, course_id),
+  FOREIGN KEY (student_id) REFERENCES students (student_id)
+);
+```
+
+执行结果：库里多出三张空表。`scores` 只能录入学号真实存在的学生，且同一学生的同一门课只能有一条记录。
+
+---
+
+## 三、查看表结构
+
+```sql
+show tables;      -- 列出库里所有的表
+desc students;    -- 列出 students 的列名、类型、能否为空、主键
+```
+
+执行结果：第二条会显示 `student_id / name / gender / class_name / email` 五行，`Key` 列标出主键。
+
+---
+
+## 四、改表：加列、改列、删列
+
+```sql
+ALTER TABLE students ADD COLUMN phone VARCHAR(20);
+
+ALTER TABLE students MODIFY COLUMN phone VARCHAR(30);
+
+ALTER TABLE students CHANGE COLUMN phone mobile VARCHAR(30);
+
+ALTER TABLE students DROP COLUMN mobile;
+```
+
+执行结果：依次新增 `phone` 列、改成 30 长度、改名为 `mobile`、再删掉这一列。
+
+`MODIFY` 只能改属性，`CHANGE` 可以改名——但新名字和新定义要一起写全。
+
+---
+
+## 五、加索引
+
+```sql
+CREATE INDEX idx_class ON students (class_name);
+
+CREATE INDEX idx_exam ON scores (exam_date);
+```
+
+执行结果：按班级查学生、按考试日期查成绩时会走索引，不用扫全表。
+
+---
+
+## 六、清空表、删表
+
+```sql
+TRUNCATE TABLE scores;   -- 清空所有行，表还在
+
+DROP TABLE scores;       -- 连表结构一起删
+DROP TABLE students;
+```
+
+执行结果：第一条把成绩清空、自增从 1 重新开始；后两条把表彻底删除。
+
+删有外键关系的表要先删子表：先 `scores`，再 `students`。
+
+| | `DELETE` | `TRUNCATE` | `DROP` |
+| --- | --- | --- | --- |
+| 删什么 | 符合条件的行 | 所有行，表保留 | 整张表 |
+| 能带 `WHERE` | 能 | 不能 | 不能 |
+| 能回滚 | 事务里能 | 不能 | 不能 |
+
+---
+
+## 七、坑点
+
+- **`DROP` / `TRUNCATE` 删了就没了**，MySQL 没有回收站，`ROLLBACK` 也救不回来。执行前先备份：`mysqldump -u root -p school > school_backup.sql`。
+- **忘了 `USE school;`**，表会建在你上一个所在的库里，之后在当前库 `SHOW TABLES` 怎么都找不到。
+- **`CHANGE` 是整体替换**：漏写 `NOT NULL`、`DEFAULT` 这些属性，它们会被悄悄丢掉，不是"只改个名字"。
+- **缩短 `VARCHAR` 会丢数据**：`VARCHAR(50)` 改成 `VARCHAR(10)`，严格模式下报 `ERROR 1406: Data too long`，非严格模式下直接截断。
+- **`utf8` 存不了 emoji**：它实际是 3 字节的 `utf8mb3`，库和表统一用 `utf8mb4`。
+- **`UNIQUE` 拦不住多个 `NULL`**：唯一索引允许多行该列为空，要非空必须写 `NOT NULL`。
+- **外键建不上只报 `errno 150`**：两边字段类型、`UNSIGNED`、字符集必须完全一致，父表被引用列必须有索引。
+- **大表 `ALTER TABLE` 会锁表**：改列类型通常要重建整张表，数据量大时别在业务高峰执行。
+</script>
+<script type="text/plain" data-doc="02">
+# 02 · DML：数据操作
+
+DML（数据操作语言）管表里的**数据**：`INSERT` 增、`UPDATE` 改、`DELETE` 删。它不改表结构。
+
+示例沿用 [01-DDL-数据定义.md](01-DDL-数据定义.md) 建好的三张表：`students`、`courses`、`scores`。
+
+> SQL 关键字不区分大小写，`INSERT` 和 `insert` 完全等价；本文两种写法都会出现，同一份代码里统一一种即可。
+
+---
+
+## 一、新增：`INSERT`
+
+**骨架**
+
+```sql
+INSERT INTO 表名 (列1, 列2, ...) VALUES (值1, 值2, ...);
+```
+
+**单行**
+
+```sql
+insert into students (name, gender, class_name, email)
+values ('张三', '男', '高一(1)班', 'zhangsan@example.com');
+```
+
+执行结果：表里多一行，`student_id` 自动填 1，没写的 `gender` 自动取默认值 `'男'`。
+
+**多行**（推荐，一次插入比循环单插快很多）
+
+```sql
+INSERT INTO students (name, gender, class_name, email) VALUES
+('李四', '女', '高一(1)班', 'lisi@example.com'),
+('王五', '男', '高一(2)班', 'wangwu@example.com'),
+('赵六', '女', '高一(2)班', NULL);
+```
+
+执行结果：又插入 3 行，学号依次是 2、3、4。
+
+```sql
+INSERT INTO courses (title, credit, teacher) VALUES
+('数学', 4.0, '陈老师'),
+('语文', 3.0, '林老师'),
+('英语', 3.0, '黄老师'),
+('物理', 2.0, '吴老师');
+
+INSERT INTO scores (student_id, course_id, score, exam_date) VALUES
+(1, 1, 92.5, '2026-06-20'),
+(1, 2, 85.0, '2026-06-22'),
+(1, 3, 78.5, '2026-06-24'),
+(2, 1, 88.0, '2026-06-20'),
+(2, 2, 95.0, '2026-06-22'),
+(2, 4, NULL, '2026-06-26'),
+(3, 1, 59.5, '2026-06-20'),
+(3, 3, 66.0, '2026-06-24'),
+(4, 2, 71.0, '2026-06-22'),
+(4, 4, 83.5, '2026-06-26');
+```
+
+执行结果：4 门课、10 条成绩（第 6 条是李四的物理，还没出分，所以是 `NULL`）。后面的查询示例都基于这份数据。
+
+---
+
+## 二、修改：`UPDATE`
+
+**骨架**
+
+```sql
+UPDATE 表名 SET 列1 = 新值, 列2 = 新值 WHERE 条件;
+```
+
+```sql
+UPDATE students
+SET email = 'wangwu_new@example.com'
+WHERE student_id = 3;
+```
+
+执行结果：只有学号 3 的王五被改，返回 `Query OK, 1 row affected`；其他行不变。
+
+---
+
+## 三、删除：`DELETE`
+
+**骨架**
+
+```sql
+DELETE FROM 表名 WHERE 条件;
+```
+
+```sql
+-- 先插一条测试记录
+INSERT INTO scores (student_id, course_id, score, exam_date)
+VALUES (1, 4, 60.0, '2026-06-26');
+
+-- 再按条件删掉它
+DELETE FROM scores WHERE student_id = 1 AND course_id = 4;
+```
+
+执行结果：插入后变成 11 条，删除后回到 10 条，其他成绩一条没动。
+
+整表清空用 `TRUNCATE`、连表一起删用 `DROP`，三者的区别见 01 末尾那张简表。
+
+---
+
+## 四、坑点
+
+- **`UPDATE` / `DELETE` 忘写 `WHERE`**：改的就是整张表、删的就是所有行，而且没有任何确认提示。习惯是先用同样的 `WHERE` 跑一次 `SELECT`，确认行数再改。
+- **`AND` 和 `OR` 混用不加括号**：`AND` 先算，`WHERE a = 'x' OR b = 'y' AND c > 0` 和你想的不是一回事，只要同时出现就加括号。
+- **字符串不加引号**：`WHERE name = 张三` 会报 `Unknown column`，文字必须用单引号；`NULL` 反过来不能加引号，`'NULL'` 是四个字符的字符串。
+- **`WHERE score = NULL` 永远查不到**：NULL 表示"未知"，和任何值比较都不成立，要用 `IS NULL`。
+- **`UPDATE` 里改完值又拿它做条件**：`SET score = score + 5 WHERE score < 60` 是按旧值判断的，一行只加一次，不会反复累加。
+- **一次插入太多行报错**：单条语句超过 `max_allowed_packet`（默认 64MB）会失败，按每批几百行拆分。
+- **一次改/删上百万行会锁很久**：其他会话全被阻塞，用 `LIMIT` 分批处理，每批几千行。
+- **外键报错要看数字**：插入不存在的学号是 `ERROR 1452`，删还被成绩引用的学生是 `ERROR 1451`。
+- **自增 ID 不连续是正常的**：回滚、删除都会消耗编号，别拿它当业务单号；刚插入的 ID 用 `SELECT LAST_INSERT_ID()` 取。
+</script>
+<script type="text/plain" data-doc="03">
+# 03 · DQL：数据查询
+
+DQL（数据查询语言）只有 `SELECT`：按条件把数据取出来，只读，不改动任何内容。
+
+示例数据沿用 [02-DML-数据操作.md](02-DML-数据操作.md)：4 个学生、4 门课、10 条成绩（其中李四的物理成绩为 `NULL`）。
+
+> SQL 关键字不区分大小写，`SELECT` 和 `select` 完全相同；本文统一用大写，自己写时同一份代码里统一一种即可。
+
+---
+
+## 一、基本查询
+
+**操作语句**
+
+```sql
+SELECT [DISTINCT] 列名1, 列名2, ...
+FROM 表名;
+```
+
+- `*` 表示取所有列，正式代码里尽量别用：表以后加一列，结果就多一列，按列位置取值的代码会错位。
+- `DISTINCT` 对整行结果去重，写在所有列名之前。
+
+**例子**
+
+例 1：查询学生表的全部数据。
+
+```sql
+SELECT * FROM students;
+```
+
+执行结果：4 行 5 列。
+
+例 2：只取姓名和班级两列。
+
+```sql
+SELECT name, class_name FROM students;
+```
+
+执行结果：4 行 2 列。
+
+例 3：查看一共有哪些班级。
+
+```sql
+SELECT DISTINCT class_name FROM students;
+```
+
+执行结果：2 行，`高一(1)班`、`高一(2)班`。
+
+---
+
+## 二、条件查询
+
+**操作语句**
+
+```sql
+SELECT 列名, ...
+FROM 表名
+WHERE 条件 [AND | OR 条件] ...;
+```
+
+常用运算符：
+
+| 类别 | 写法 | 说明 |
+| --- | --- | --- |
+| 比较 | `=` `<>` `>` `<` `>=` `<=` | `<>` 即不等于 |
+| 逻辑 | `AND` `OR` `NOT` | 与、或、非，`AND` 优先级高于 `OR` |
+| 区间 | `BETWEEN 80 AND 90` | 含两端 |
+| 集合 | `IN ('数学','语文')` | 等于其中任意一个 |
+| 模糊 | `LIKE '张%'` | `%` 任意长度，`_` 一个字符 |
+| 空值 | `IS NULL` / `IS NOT NULL` | 判断空值只能用 `IS`，不能用 `=` |
+
+**例子**
+
+例 1：查高一(1)班的学生。
+
+```sql
+SELECT name, class_name FROM students
+WHERE class_name = '高一(1)班';
+```
+
+执行结果：2 行（张三、李四）。
+
+例 2：查 1、2 号课程中 90 分及以上的成绩。
+
+```sql
+SELECT student_id, course_id, score FROM scores
+WHERE course_id IN (1, 2) AND score >= 90;
+```
+
+执行结果：课程 1、2 里分数达到 90 的记录。
+
+例 3：查姓张的学生，以及还没出成绩的记录。
+
+```sql
+SELECT name FROM students WHERE name LIKE '张%';
+
+SELECT * FROM scores WHERE score IS NULL;
+```
+
+执行结果：第一条 1 行（张三）；第二条 1 行（李四的物理成绩为空）。
+
+---
+
+## 三、聚合函数
+
+**操作语句**
+
+```sql
+SELECT 聚合函数(列名) [AS 别名], ...
+FROM 表名
+[WHERE 条件];
+```
+
+常用聚合函数：`COUNT()` 计数、`SUM()` 求和、`AVG()` 平均、`MAX()` 最大、`MIN()` 最小。
+
+- `COUNT(*)` 统计行数；`COUNT(列名)` 会跳过该列的 `NULL`，统计行数一律用 `COUNT(*)`。
+- 聚合函数会把多行压成一行，所以不能和普通列随便混着查（除非配合分组）。
+
+**例子**
+
+例 1：统计成绩条数和平均分。
+
+```sql
+SELECT COUNT(*) AS 记录数, ROUND(AVG(score), 2) AS 平均分
+FROM scores;
+```
+
+执行结果：`10` 条记录，平均分 `79.89`。
+
+例 2：查看最高分、最低分和总分。
+
+```sql
+SELECT MAX(score) AS 最高分, MIN(score) AS 最低分, SUM(score) AS 总分
+FROM scores;
+```
+
+执行结果：一行三个汇总值，最高分为 `95.0`。
+
+例 3：对比 `COUNT(*)` 与 `COUNT(列名)` 的差别。
+
+```sql
+SELECT COUNT(*) AS 总行数, COUNT(score) AS 有成绩行数
+FROM scores;
+```
+
+执行结果：`10` 和 `9`，差的那一行就是李四的空成绩。
+
+---
+
+## 四、分组查询
+
+**操作语句**
+
+```sql
+SELECT 分组列, 聚合函数(列名) AS 别名
+FROM 表名
+[WHERE 条件]
+GROUP BY 分组列
+[HAVING 分组后的条件];
+```
+
+- 分组列有几个，就按几个列组合分组；`SELECT` 里没被聚合的列必须出现在 `GROUP BY` 里，否则 MySQL 8 报 `ERROR 1055`。
+- `WHERE` 筛的是分组前的行，`HAVING` 筛的是分组后的结果，所以 `AVG()` 这类聚合条件只能写在 `HAVING` 里。
+
+**例子**
+
+例 1：统计每个学生选了几门课、平均分多少。
+
+```sql
+SELECT student_id, COUNT(*) AS 选课数, ROUND(AVG(score), 2) AS 平均分
+FROM scores
+GROUP BY student_id;
+```
+
+执行结果：4 行 —— 学号 1 选 3 门均分 85.33、学号 2 选 3 门均分 91.50、学号 3 选 2 门 62.75、学号 4 选 2 门 77.25。
+
+例 2：统计每门课的平均分，只要平均分不低于 80 的课。
+
+```sql
+SELECT course_id, ROUND(AVG(score), 2) AS 平均分
+FROM scores
+GROUP BY course_id
+HAVING AVG(score) >= 80;
+```
+
+执行结果：只剩课程 1（80.00）和课程 2（83.67）。
+
+例 3：先筛出及格成绩，再按课程统计。
+
+```sql
+SELECT course_id, COUNT(*) AS 及格人数, ROUND(AVG(score), 2) AS 平均分
+FROM scores
+WHERE score >= 60
+GROUP BY course_id;
+```
+
+执行结果：每门课一行，只统计 60 分及以上的记录。
+
+---
+
+## 五、排序查询
+
+**操作语句**
+
+```sql
+SELECT 列名, ...
+FROM 表名
+ORDER BY 列1 [ASC | DESC] [, 列2 [ASC | DESC]] ...;
+```
+
+- `ASC` 升序（默认，可省略），`DESC` 降序。
+- 多列排序时，前一列相同才比较后一列。
+- MySQL 中 `NULL` 升序排最前、降序排最后。
+- `ORDER BY` 可以用 `SELECT` 里的别名，`WHERE` 不行。
+
+**例子**
+
+例 1：成绩从高到低排。
+
+```sql
+SELECT student_id, course_id, score FROM scores
+ORDER BY score DESC;
+```
+
+执行结果：李四的 95.0 在最前，空成绩排在最后。
+
+例 2：先按课程升序，同一门课内再按分数降序。
+
+```sql
+SELECT course_id, student_id, score FROM scores
+ORDER BY course_id ASC, score DESC;
+```
+
+执行结果：课程 1 的记录排在前面，课程 2 随后，依此类推；同课程内分数高的在前。
+
+例 3：按聚合结果的别名排序。
+
+```sql
+SELECT student_id, ROUND(AVG(score), 2) AS 平均分
+FROM scores
+GROUP BY student_id
+ORDER BY 平均分 DESC;
+```
+
+执行结果：学号 2（91.50）、学号 1（85.33）、学号 4（77.25）、学号 3（62.75）。
+
+---
+
+## 六、分页查询
+
+**操作语句**
+
+```sql
+SELECT 列名, ...
+FROM 表名
+ORDER BY 列名
+LIMIT 每页条数 OFFSET 偏移量;
+
+-- 等价写法：LIMIT 偏移量, 每页条数
+```
+
+- 偏移量 =（页码 − 1）× 每页条数。
+- `LIMIT` 要配合 `ORDER BY`，否则每次返回的顺序不固定，翻页会出现重复或遗漏。
+- 深分页很慢：`LIMIT 100000, 20` 要先数过 10 万行，可以改成按主键续查。
+
+**例子**
+
+例 1：取分数最高的前 3 条。
+
+```sql
+SELECT st.name, sc.score
+FROM scores sc
+JOIN students st ON st.student_id = sc.student_id
+ORDER BY sc.score DESC
+LIMIT 3;
+```
+
+执行结果：李四 95.0、张三 92.5、李四 88.0。
+
+例 2：每页 3 条，取第 2 页。
+
+```sql
+SELECT student_id, course_id, score FROM scores
+ORDER BY student_id, course_id
+LIMIT 3 OFFSET 3;
+
+-- 等价写法
+-- LIMIT 3, 3
+```
+
+执行结果：跳过前 3 条，返回第 4～6 条。
+
+例 3：大表翻页时按主键续查，避免数前 10 万行。
+
+```sql
+SELECT * FROM scores
+WHERE student_id > 100
+ORDER BY student_id
+LIMIT 20;
+```
+
+执行结果：从 `student_id` 大于 100 的位置往后取 20 行，速度与页码无关。
+
+---
+
+## 七、编写顺序与执行顺序
+
+**编写顺序**（你敲 SQL 时从上到下的顺序）
+
+```sql
+SELECT      -- 1. 要哪些列
+FROM        -- 2. 从哪张表
+JOIN        -- 3. 关联哪些表
+WHERE       -- 4. 筛掉哪些行
+GROUP BY    -- 5. 按什么分组
+HAVING      -- 6. 筛掉哪些组
+ORDER BY    -- 7. 怎么排序
+LIMIT;      -- 8. 取多少条
+```
+
+**执行顺序**（数据库实际的处理顺序）
+
+| 顺序 | 阶段 | 作用 |
+| --- | --- | --- |
+| 1 | `FROM` / `JOIN` | 确定数据来源，把表连起来 |
+| 2 | `WHERE` | 逐行过滤，丢掉不满足条件的行 |
+| 3 | `GROUP BY` | 把剩下的行按列分组 |
+| 4 | `HAVING` | 过滤分组后的结果 |
+| 5 | `SELECT` | 计算要输出的列、表达式和别名 |
+| 6 | `DISTINCT` | 对结果去重 |
+| 7 | `ORDER BY` | 排序 |
+| 8 | `LIMIT` | 截取指定条数 |
+
+对照记法：
+
+```text
+编写：SELECT → FROM → JOIN → WHERE → GROUP BY → HAVING → ORDER BY → LIMIT
+执行：FROM/JOIN → WHERE → GROUP BY → HAVING → SELECT → DISTINCT → ORDER BY → LIMIT
+```
+
+**为什么要知道执行顺序**
+
+- `WHERE` 在 `SELECT` 之前执行，所以 `WHERE` 里用不了 `SELECT` 起的别名，也用不了聚合函数；`ORDER BY` 在 `SELECT` 之后，所以能用别名。
+- `HAVING` 在分组之后执行，所以 `AVG()`、`COUNT()` 这类聚合条件只能写在 `HAVING` 里，写在 `WHERE` 会报错。
+- `LIMIT` 最后执行，所以它拿到的是排序后的结果，不写 `ORDER BY` 时取到哪几条并不固定。
+
+---
+
+## 附一、多表连接与子查询
+
+**多表连接**
+
+```sql
+SELECT st.name, c.title, sc.score
+FROM scores sc
+JOIN students st ON st.student_id = sc.student_id
+JOIN courses  c  ON c.course_id   = sc.course_id
+ORDER BY st.student_id, c.course_id;
+```
+
+执行结果：10 行，每行是"谁、哪门课、多少分"，比如 `张三 | 数学 | 92.5`。
+
+`JOIN` 只保留两边都能对上的行；`LEFT JOIN` 会保留左表的全部行，右表没匹配到的列填 `NULL`。
+
+**子查询**
+
+```sql
+SELECT name FROM students
+WHERE student_id IN (
+  SELECT student_id FROM scores WHERE score >= 90
+);
+```
+
+执行结果：张三、李四两行（他们的成绩里有 90 分以上的）。
+
+---
+
+## 附二、常见坑点
+
+- **`COUNT(字段)` 会跳过 `NULL`**：本例 `COUNT(*)` 是 10，`COUNT(score)` 是 9。统计行数一律用 `COUNT(*)`。
+- **`= NULL` 永远不成立**：`WHERE score = NULL` 返回 0 行，要用 `IS NULL`；`score <> 90` 也会漏掉成绩为空的行。
+- **`NOT IN` 的列表里有 `NULL`**：`NOT IN (1, 2, NULL)` 恒不成立，一行都查不出来，改用 `NOT EXISTS`。
+- **`LEFT JOIN` 的条件写错位置**：右表的过滤条件写在 `WHERE` 里，会把外连接退化成内连接，`NULL` 行全被筛掉；要保留左表就写到 `ON` 里。
+- **`WHERE` 里用不了 `SELECT` 的别名**：`WHERE` 先于 `SELECT` 执行，别名还不存在；`ORDER BY` 可以用。
+- **`GROUP BY` 漏列**：`SELECT` 里没有聚合的列必须出现在 `GROUP BY` 里，否则 MySQL 8 报 `ERROR 1055`。
+- **`LIKE '%张%'` 很慢**：前导 `%` 用不上索引，只能全表扫描；数据量大时考虑全文索引。
+- **深分页很慢**：`LIMIT 100000, 20` 要先数过 10 万行，改成 `WHERE id > 上一页最后一个 id ORDER BY id LIMIT 20`。
+</script>
+<script type="text/plain" data-doc="04">
+# 04 · DCL：数据控制
+
+DCL（数据控制语言）管账号和权限：谁能连接数据库、能对哪些表做什么。它不碰表结构，也不碰数据。
+
+MySQL 里的账号是"用户名 + 来源主机"的组合，写成 `'用户名'@'主机'`，比如 `'report'@'%'` 表示任何机器都能用 `report` 登录。
+
+> SQL 关键字不区分大小写，`GRANT` 和 `grant` 一样；本文两种写法都会出现，同一份脚本里统一一种即可。
+
+---
+
+## 一、建账号
+
+```sql
+CREATE USER 'report'@'%' IDENTIFIED BY 'Read@2026';
+```
+
+执行结果：多出一个账号，能登录，但没有任何数据权限（连查询都会被拒绝）。
+
+---
+
+## 二、授权：`GRANT`
+
+**骨架**
+
+```sql
+GRANT 权限列表 ON 范围 TO '用户名'@'主机';
+```
+
+```sql
+grant select on school.* to 'report'@'%';
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON school.students TO 'app'@'%';
+```
+
+执行结果：`report` 能查 `school` 库的所有表；`app` 只能对 `students` 这一张表增删改查（`app` 账号需先用 `CREATE USER` 建好）。
+
+范围可以写得更粗或更细：`*.*` 所有库、`school.*` 整个库、`school.students` 单张表、`school.students(name)` 某一列。
+
+---
+
+## 三、查看权限
+
+```sql
+SHOW GRANTS FOR 'report'@'%';
+```
+
+执行结果：列出该账号的全部权限，其中 `GRANT SELECT ON school.*` 就是刚才授的；`USAGE` 表示"能登录但没有任何权限"。
+
+---
+
+## 四、收回权限：`REVOKE`
+
+```sql
+REVOKE SELECT ON school.* FROM 'report'@'%';
+```
+
+执行结果：查询权限立即失效，对方再查会报 `SELECT command denied`。
+
+---
+
+## 五、改密码、锁账号、删账号
+
+```sql
+ALTER USER 'report'@'%' IDENTIFIED BY 'NewRead@2026';  -- 改密码
+
+alter user 'report'@'%' account lock;                   -- 锁定，暂时谁都不能登
+
+ALTER USER 'report'@'%' ACCOUNT UNLOCK;                -- 解锁
+
+DROP USER 'report'@'%';                                -- 删除账号
+```
+
+执行结果：依次修改密码、冻结账号、恢复账号、彻底删除账号（删除后新建的登录都会失败）。
+
+---
+
+## 六、坑点
+
+- **MySQL 8 不能边授权边建号**：`GRANT ... IDENTIFIED BY ...` 的写法已被移除，会报 `ERROR 1064` 或 `ERROR 1410`；必须先 `CREATE USER` 再 `GRANT`。
+- **`GRANT` 之后不需要 `FLUSH PRIVILEGES`**：授权、收权、建号都立即生效；只有你直接用 `UPDATE` 改了 `mysql.user` 这类授权表，才需要刷新。
+- **账号是"用户名@主机"两条信息**：建了 `'app'@'%'` 不代表用 `-h localhost` 一定匹配得上，必要时单独建 `'app'@'localhost'`。
+- **别给 `ALL PRIVILEGES ON *.*`，也别用 root 跑应用**：权限就是出事时的损失上限，业务账号只给需要的 `SELECT/INSERT/UPDATE/DELETE`。
+- **权限只加不减**：时间一长没人说得清谁有 `DELETE` 权限，定期 `SHOW GRANTS` 巡检，离职称号先 `ACCOUNT LOCK` 再删。
+- **直接改线上账号密码会让应用立刻断连**：连接池还在用旧密码，稳妥做法是新建账号、改配置、观察、再删旧账号。
+- **老客户端连不上 8.0**：报 `Authentication plugin 'caching_sha2_password' cannot be loaded`，优先升级驱动。
+- **`DROP USER` 不会踢掉已有连接**：已建立的会话往往还能继续用，删号后要配合停业务或 `KILL` 连接。
+</script>
+<script type="text/plain" data-doc="05">
+# 进阶补充：入门笔记之外，还会用到的这些
+
+这里**不重复**四份精简笔记（01-DDL、02-DML、03-DQL、04-DCL）里已经写过的语法骨架和示例。只补它们没展开、但实际工作里迟早会碰到的点：建表时真正要选的参数、事务与存在则更新、连接类型与窗口函数、角色与权限粒度。
+
+> SQL 关键字不区分大小写，`SELECT` 和 `select` 等价；本文两种写法都会出现，自己写时统一一种即可。
+
+---
+
+## DDL：结构层面的四个选择
+
+~ 承接 [01-DDL-数据定义.md](01-DDL-数据定义.md)。精简版讲了怎么建表、加列、建索引；这里补"建的时候该选什么"和"还有哪两种结构对象"。
+
+### 1.1 存储引擎与字符集：建表时真正要决定的参数
+
+~ **什么时候用**：新建表、或接手一张不知道来历的老表时。
+
+```sql
+ALTER TABLE students
+  ENGINE = InnoDB,
+  CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+```
+
+~ **引擎：**只用 `InnoDB`——它支持事务和外键，崩机能恢复；`MyISAM` 不支持事务，出问题容易丢数据。**字符集：**`utf8mb4` 才能存 emoji；`utf8mb4_0900_ai_ci` 里的 `ci` 表示比较时不区分大小写，`ai` 表示不区分重音，它决定了 `WHERE name = 'abc'` 能不能匹配到 `'ABC'`。
+
+> **注意：**库、表、连接三处字符集不一致，是中文乱码最常见的原因。
+
+### 1.2 外键的删除动作：不止"拦住"一种
+
+~ **什么时候用**：两张表有从属关系，删主表数据前想好从表怎么办。
+
+```sql
+ALTER TABLE scores
+  ADD CONSTRAINT fk_scores_course
+  FOREIGN KEY (course_id) REFERENCES courses (course_id)
+  ON DELETE CASCADE ON UPDATE CASCADE;
+```
+
+~ **`CASCADE`** 删课程时连带删掉它的成绩；**`RESTRICT`**（默认）只要还有成绩引用就禁止删；**`SET NULL`** 把从表外键置空（该列必须允许 NULL）。从属数据（成绩、订单明细）适合 `CASCADE`，主数据（课程、用户）适合 `RESTRICT`。
+
+> **注意：**`CASCADE` 一处删除会波及多张表，删之前先 `SELECT` 确认范围。
+
+### 1.3 CHECK 约束：把业务规则写进表里
+
+~ **什么时候用**：分数范围、金额非负、状态只能取几个值——不想只靠代码校验时。
+
+```sql
+alter table courses
+  add constraint chk_credit check (credit between 0 and 20);
+```
+
+~ 之后写入 `credit = 25` 会直接报 `ERROR 3819: Check constraint 'chk_credit' is violated`，坏数据进不来。MySQL **8.0.16 起**才真正执行 CHECK，更早的版本只解析不拦截。
+
+### 1.4 视图：把常用查询存成一张"虚拟表"
+
+~ **什么时候用**：三表关联天天写、或要给别人看数据但想藏掉某些列。
+
+```sql
+create view v_student_score as
+select st.name, c.title, sc.score
+from scores sc
+join students st on st.student_id = sc.student_id
+join courses  c  on c.course_id  = sc.course_id;
+```
+
+~ 之后像查表一样用它：`SELECT * FROM v_student_score WHERE score >= 90;`；删掉用 `DROP VIEW v_student_score;`。视图不存数据，每次查询都会重新执行那条 SELECT，所以嵌套层级别太深。
+
+### 1.5 索引怎么选：复合索引看"最左前缀"
+
+~ **什么时候用**：一条查询慢，想加索引，又怕加错、加多。
+
+```sql
+CREATE INDEX idx_class_gender ON students (class_name, gender);
+
+EXPLAIN SELECT * FROM students WHERE class_name = '高一(1)班';
+```
+
+~ 这个索引能服务 `WHERE class_name = ?` 和 `WHERE class_name = ? AND gender = ?`，但**只查 gender 用不上**——复合索引从左往右匹配，跳过第一列就失效。用 `EXPLAIN` 看 `type` 和 `key` 是不是 `ref` 与索引名，别凭感觉判断。
+
+> **注意：**索引越多，写入越慢、占盘越大；只给 WHERE / JOIN / ORDER BY 里真正用到的列建。
+
+---
+
+## DML：让多条写操作可控
+
+~ 承接 [02-DML-数据操作.md](02-DML-数据操作.md)。精简版讲了单条增删改；这里补"一组操作怎么不出错"和三种更实用的写入形态。
+
+### 2.1 事务：一组操作要么全成、要么全不算
+
+~ **什么时候用**：转账、批量改分、任何"改一半出错会很麻烦"的场景。
+
+```sql
+start transaction;
+
+update scores set score = score + 5 where score < 60;
+delete from scores where score is null;
+
+rollback;   -- 检查后不满意就回滚；确认无误改成 commit
+```
+
+~ 默认 `autocommit = 1`，单条语句敲下就生效；显式开事务后，只有 `COMMIT` 才真正落盘，`ROLLBACK` 能全部撤销。
+
+> **注意：**`ALTER` / `DROP` 这类 DDL 会隐式提交当前事务，所以事务里不要混结构变更，否则你以为能回滚，其实早就提交了。
+
+### 2.2 存在就更新：`ON DUPLICATE KEY UPDATE`
+
+~ **什么时候用**：每天同步成绩、批量导入数据，同一个键可能已经存在。
+
+```sql
+insert into scores (student_id, course_id, score, exam_date)
+values (1, 1, 95.0, '2026-06-20')
+on duplicate key update
+  score = values(score),
+  exam_date = values(exam_date);
+```
+
+~ 它靠唯一索引 `(student_id, course_id)` 判断"已存在"：不存在就插入，存在就改成新值。返回 `2 rows affected` 表示命中并更新了 1 行，不是插了两条。
+
+### 2.3 从查询结果插入：`INSERT ... SELECT`
+
+~ **什么时候用**：归档旧数据、备份某个班、把 A 表的数据搬到 B 表。
+
+```sql
+CREATE TABLE students_bak LIKE students;
+
+INSERT INTO students_bak (name, gender, class_name, email)
+SELECT name, gender, class_name, email
+FROM students
+WHERE class_name = '高一(1)班';
+```
+
+~ 执行后 `students_bak` 里多出 1 班的 2 个学生。`CREATE TABLE ... LIKE` 只复制结构（含索引），不复制数据；`INSERT` 的列和 `SELECT` 的列要一一对应。
+
+### 2.4 分批改、分批删：别用一个大事务锁住百万行
+
+~ **什么时候用**：修历史数据、清理旧数据，一次影响几万行以上。
+
+```sql
+update scores set score = 60 where score is null limit 1000;
+
+delete from scores where exam_date < '2026-01-01' limit 1000;
+```
+
+~ 每次只处理 1000 行，循环执行到"影响行数为 0"为止，批间稍作停顿。看返回的 `Rows matched` 判断还剩多少。一次改太多会产生巨大的 undo 日志，并长时间锁住这些行。
+
+---
+
+## DQL：连接、判存在、分类、排名
+
+~ 承接 [03-DQL-数据查询.md](03-DQL-数据查询.md)。精简版讲了 SELECT、WHERE、分组和 JOIN 的基本写法；这里补连接的差别、另外两种子查询、以及"每行保留 + 组内排名"的思路。
+
+### 3.1 四种连接到底差在哪
+
+~ **什么时候用**：决定"匹配不上的行要不要保留"时。
+
+| 写法 | 结果 |
+| --- | --- |
+| `INNER JOIN` | 只保留两边都能匹配上的行 |
+| `LEFT JOIN` | 左表全保留，右表没匹配到的列填 `NULL` |
+| `RIGHT JOIN` | 右表全保留；实际少用，调换表顺序写成 LEFT 更好读 |
+| `CROSS JOIN` | 笛卡尔积，行数 = 两表行数相乘，多半是漏写了 ON |
+
+```sql
+select st.name, sc.score
+from students st
+left join scores sc
+       on sc.student_id = st.student_id
+      and sc.score >= 90;
+```
+
+~ 结果 4 行：张三 92.5、李四 95.0，王五和赵六的成绩列是 `NULL`。条件写在 `ON` 里才能保留左表；写到 `WHERE` 就退化成内连接了。
+
+### 3.2 `EXISTS`：只关心"有没有"
+
+~ **什么时候用**：判断关联表里是否存在满足条件的记录，尤其是 `NOT IN` 踩过 NULL 坑之后。
+
+```sql
+select name from students st
+where exists (
+  select 1 from scores sc
+  where sc.student_id = st.student_id and sc.score < 60
+);
+```
+
+~ 结果只有王五。子查询找到第一条就停止，`SELECT 1` 就够了；它不返回具体值，所以不会被 NULL 影响。
+
+### 3.3 `CASE WHEN`：在结果里做分类
+
+~ **什么时候用**：把分数翻译成等级、把状态码翻译成文字、做行列转换。
+
+```sql
+select st.name, sc.score,
+  case
+    when sc.score is null then '未出分'
+    when sc.score >= 90 then '优秀'
+    when sc.score >= 60 then '及格'
+    else '不及格'
+  end as 等级
+from scores sc join students st on st.student_id = sc.student_id;
+```
+
+~ 从上往下匹配，命中第一个就返回。所以 `IS NULL` 必须放最前面，否则 NULL 会一路掉进 `ELSE`，被误判成"不及格"。
+
+### 3.4 窗口函数：保留每一行，同时算组内排名
+
+~ **什么时候用**：排名、组内占比、每组取第一条——这些用 GROUP BY 做不到，因为它会把多行压成一行。
+
+```sql
+select c.title, st.name, sc.score,
+       rank() over (partition by sc.course_id order by sc.score desc) as 课程排名
+from scores sc
+join students st on st.student_id = sc.student_id
+join courses  c  on c.course_id  = sc.course_id;
+```
+
+~ `PARTITION BY` 是分组，`ORDER BY` 是组内排序，每行都会得到一个名次。三个排序函数的区别：`ROW_NUMBER` 不并列，`RANK` 并列且跳号（1、1、3），`DENSE_RANK` 并列不跳号（1、1、2）。
+
+~ "每组取第一条"的套路：把上面的查询包成派生表，再在外层筛 `WHERE rn = 1`；窗口函数不能直接写在 `WHERE` 里。
+
+### 3.5 一条 SELECT 的真实执行顺序
+
+~ **什么时候用**：想不通"为什么这里不能用别名/聚合函数"的时候。
+
+```text
+FROM / JOIN → WHERE → GROUP BY → HAVING → SELECT → ORDER BY → LIMIT
+```
+
+~ 你写的时候从 `SELECT` 开头，但数据库从 `FROM` 开始执行。所以 `WHERE` 里用不了 `SELECT` 起的别名（那时还没算出来），也用不了聚合函数（那时还没分组）；`HAVING` 在分组之后，所以两个都能用。
+
+---
+
+## DCL：权限的粒度与生效时机
+
+~ 承接 [04-DCL-数据控制.md](04-DCL-数据控制.md)。精简版讲了建号、授权、收权；这里补"权限能细到什么程度""怎么批量管"和两个最常被误解的规则。
+
+### 4.1 权限粒度：从整个实例到单独一列
+
+~ **什么时候用**：同一个库，不同角色该看到的东西不一样时。
+
+```sql
+grant select (student_id, name, class_name)
+  on school.students
+  to 'service'@'%';
+```
+
+~ 四个层级：`*.*` 所有库（只给 DBA）、`school.*` 单库（业务账号）、`school.students` 单表（临时取数）、`school.students(name)` 单列（藏手机号、身份证）。
+
+> **注意：**列级权限和 `SELECT *` 冲突——查所有列会直接报权限不足，必须显式写有权限的列。
+
+### 4.2 角色：一组权限打包发给多个账号
+
+~ **什么时候用**：十几个报表账号要同一套只读权限，一个个 GRANT 又累又容易漏。
+
+```sql
+create role 'role_readonly';
+
+grant select on school.* to 'role_readonly';
+
+grant 'role_readonly' to 'report'@'%';   -- report 账号需先用 CREATE USER 建好
+
+set default role 'role_readonly' to 'report'@'%';
+```
+
+~ 角色本身也像一个账号，只是不能登录。以后加权限改角色就行，不用逐个账号改。
+
+> **注意：**只 `GRANT` 角色而不 `SET DEFAULT ROLE`，角色默认是未激活状态，用户登录后权限不生效——看起来像授权失败了。
+
+### 4.3 `FLUSH PRIVILEGES` 到底什么时候需要
+
+~ **什么时候用**：只有一种情况：你绕过 SQL，直接改了授权表。
+
+```sql
+flush privileges;   -- 仅在直接 UPDATE mysql.user 之后需要
+```
+
+~ `GRANT`、`REVOKE`、`CREATE USER`、`DROP USER` 都是立即生效的，**不需要**它。网上大量"授权后记得 FLUSH"的说法是多余的；真正需要它的场景（手改 `mysql` 库）本身就不推荐。
+
+### 4.4 主机位不是装饰：`'用户名'@'主机'`
+
+~ **什么时候用**：建号时决定"允许从哪里连"，以及排查"账号建了却连不上"。
+
+```sql
+create user 'app'@'localhost' identified by 'App@2026';
+create user 'app'@'192.168.1.%' identified by 'App@2026';
+create user 'app'@'%' identified by 'App@2026';   -- 任何来源，谨慎使用
+```
+
+~ 同名不同主机是**三个独立账号**，权限各算各的。匹配时更具体的主机优先：本机连接会先找 `'app'@'localhost'`，不走 `'%'`；用 `-h 127.0.0.1` 连时匹配的又是另一条记录。
+
+> **注意：**`'%'` 加上高权限等于把库暴露给整个网络，生产环境优先限定网段。
+</script>
+<script type="text/plain" data-doc="06">
+# MySQL 函数学习笔记
+
+> **一句话理解**：函数就是数据库自带的"加工工具"。把字段或者一个值丢进去，它返回加工后的结果，原来表里的数据不会被改（只有套在 `update` 里才会写回去）。
+
+这篇对应项目里的 `01.函数操作` 四个脚本：`字符串函数.sql`、`数值函数.sql`、`日期函数.sql`、`流程控制函数.sql`。脚本里用的是 `fengling` 库，涉及到 `employee` 表，这里只用到它的四列：`workno`（工号）、`name`（姓名）、`workaddress`（工作地址）、`entrydate`（入职日期）。
+
+---
+
+## 一、字符串函数
+
+对应 `01.函数操作\字符串函数.sql`。
+
+| 函数 | 干什么 | 脚本里怎么写的 | 结果 |
+| :--- | :--- | :--- | :--- |
+| `concat` | 把几个字符串接在一起 | `select concat('hello','MySQL');` | `helloMySQL` |
+| `lower` | 全部变小写 | `select lower('HELLO');` | `hello` |
+| `upper` | 全部变大写 | `select upper('hello');` | `HELLO` |
+| `lpad` | 左边补字符，补到指定总长度 | `select lpad('01',10,'-');` | `--------01` |
+| `rpad` | 右边补字符，补到指定总长度 | `select rpad('01',10,'-');` | `01--------` |
+| `trim` | 去掉首尾空格 | `select trim('  hello  world   ');` | `hello  world` |
+| `substring` | 截取一段 | `select substring('hello mysql',1,5);` | `hello` |
+
+三个注意点：
+
+* `lpad` / `rpad` 的第二个参数是**补完以后的总长度**，不是"补几个"。`lpad('01',10,'-')` 是补到 10 位，所以补 8 个 `-`。
+* `trim` 只去首尾，中间的空格不动，所以 `hello  world` 中间那两个空格还在。
+* `substring` 的位置**从 1 开始数**，不是从 0。`substring('hello mysql',1,5)` 是从第 1 个字符开始取 5 个。
+
+### 脚本里的实际用法：工号补零
+
+```sql
+-- 业务要求：员工工号统一 5 位数，不够的前面补 0
+update employee set workno = lpad(workno,5,'0');
+```
+
+这条语句会对 `employee` 每一行执行一次：工号本来 3 位就补 2 个 0，本来 5 位就原样不动。`update` 配合函数，是函数真正"改数据"的地方；`select` 里的函数只是算给你看，不落库。
+
+---
+
+## 二、数值函数
+
+对应 `01.函数操作\数值函数.sql`。这一组最简单，直接看语句和结果：
+
+```sql
+select ceil(1.1);            -- 2，向上取整，不管小数多少都往上进
+select floor(1.8);           -- 1，向下取整，小数直接砍掉
+select mod(7,4);             -- 3，取余数，7 ÷ 4 余 3
+select rand();               -- 0 到 1 之间的小数，每次执行都可能不一样
+select round(2.34567,2);     -- 2.35，四舍五入保留 2 位
+select round(2.34367,2);     -- 2.34
+```
+
+`round` 的第二个参数是保留几位小数，写 0 就是取整。
+
+### 脚本里的实际用法：生成六位随机验证码
+
+```sql
+select lpad(floor(rand()*1000000),6,'0');
+select rpad(ceil(rand()*1000000),6,'0');
+select lpad(round(rand()*1000000,0),6,'0');
+```
+
+拆开看就三步：
+
+1. `rand()` 得到一个 0~1 的小数；
+2. 乘 `1000000` 变成 0~999999 之间的数，再取整（`floor`、`ceil`、`round` 三种都行）；
+3. 用 `lpad` 补到 6 位——因为随机数可能只有 1、2 位，比如算出来是 `123`，补完才是 `000123`。
+
+这里正好把字符串函数和数值函数串起来用了，函数套函数是日常最普通的写法，不用害怕。
+
+---
+
+## 三、日期函数
+
+对应 `01.函数操作\日期函数.sql`。
+
+```sql
+select curdate();   -- 今天日期，比如 2026-11-25
+select curtime();   -- 当前时间，比如 13:54:00
+select now();       -- 日期加时间，比如 2026-11-25 13:54:00
+```
+
+三个"取当前时间"的函数区别只在精度：只要日期用 `curdate`，只要时间用 `curtime`，两个都要用 `now`。
+
+### 1. 取出年、月、日
+
+```sql
+select year(now());    -- 2026
+select month(now());   -- 11
+select day(now());     -- 25
+```
+
+返回的是数字，不是字符串，所以可以直接拿去比较大小。
+
+### 2. 日期往后推、往前推
+
+```sql
+select date_add(now(),INTERVAL 70 day);    -- 70 天后的日期时间
+select date_add(now(),INTERVAL 70 year);   -- 70 年后的日期时间
+```
+
+`INTERVAL 70 day` 里的单位可以换：`day`、`month`、`year` 都行。往前推就在数字前加负号，写成 `INTERVAL -70 day`，效果和 `date_sub` 一样。
+
+### 3. 算两个日期差多少天
+
+```sql
+select datediff('2026-11-21','2026-12-21');   -- -30
+select datediff('2026-12-21','2026-11-21');   -- 30
+```
+
+规则是**第一个减第二个**，所以顺序反了结果就是负数。只算"日期"差，不精确到时分秒。
+
+### 4. 脚本里的实际用法：算员工入职天数
+
+```sql
+select name,
+       datediff(curdate(),entrydate) as entrydays
+from employee
+order by entrydays desc;
+```
+
+`curdate()` 是今天，`entrydate` 是入职那天，今天减入职日就是入职天数。`as entrydays` 起了个别名，`order by` 才能直接用这个名字排序，按入职天数从多到少排。
+
+---
+
+## 四、流程控制函数
+
+对应 `01.函数操作\流程控制函数.sql`。这一组的作用就是"按条件返回不同的值"，和我们写代码里的 `if`、`三元运算符` 是一个意思。
+
+### 1. `if`：二选一
+
+```sql
+select if(true,'ok','error');   -- ok
+```
+
+三个参数：条件、条件为真返回什么、条件为假返回什么。它就是编程里的三元运算符 `条件 ? 真值 : 假值`。
+
+### 2. `ifnull`：专门处理空值
+
+```sql
+select ifnull('','default');    -- 空字符串，原样返回
+select ifnull('ok','default');  -- ok
+select ifnull(null,'default');  -- default
+```
+
+第一个参数**只有真正是 `null` 才换**，空字符串 `''` 不算空，会原样返回。这个点很容易记错。
+
+### 3. `case when then else end`：多分支
+
+脚本里用两种写法做了同一件事——把工作地址翻译成城市等级：
+
+```sql
+-- 写法一：case 字段 when 值 then 结果
+select
+    name,
+    (case employee.workaddress when '北京' then '一线城市' when '上海' then '一线城市' else '二线城市' end) as '工作地址'
+from employee;
+
+-- 写法二：用 if + in 达到同样效果
+select
+    name,
+    (if(employee.workaddress in('北京','上海'),'一线城市','二线城市')) as '工作地址'
+from employee;
+```
+
+`case 字段 when 值` 这种写法只能做**等值判断**（字段等于某个值）。要写 `>=`、`<` 这种范围判断，得把字段挪到 `when` 后面：
+
+```sql
+case
+    when math >= 80 then '优秀'
+    when math >= 60 then '及格'
+    else '不及格'
+end
+```
+
+### 4. 完整案例：给三科成绩打等级
+
+脚本里先建了一张 `score` 表：
+
+```sql
+create table score(
+    id int comment 'ID',
+    name varchar(20) comment '姓名',
+    math int comment '数学',
+    english int comment '英语',
+    chinese int comment '语文'
+) comment '学员成绩表';
+
+insert into score(id, name, math, english, chinese)
+    values(1,'tom',67,78,97),
+          (2,'marry',54,79,83),
+          (3,'wangxuan',11,69,99),
+          (4,'tongkan',66,79,10),
+          (5,'fengling',100,91,98);
+```
+
+然后一条 `select` 把三门课都翻译成文字：
+
+```sql
+select
+      id,
+      name,
+      (case when math >= 80 then '优秀' when math >= 60 then '及格' else '不及格' end) '数学',
+      if(english>=80,'优秀',if(english>=60,'及格','不及格')) '英语',
+      if(chinese>=85,'优秀',if(chinese>=60,'及格','不及格')) '语文'
+from score;
+```
+
+看这段代码要抓三点：
+
+* 数学用的是 `case when`，英语、语文用的是 `if` 套 `if`。两个分支用 `if` 够了，三个以上用 `case when` 更清楚。
+* 分数线是三门课各写各的：数学 80、英语 80、语文 85。脚本开头的注释写的是">=85 优秀"，和代码对不上，**以代码为准**。
+* 最后的 `'数学'`、`'英语'`、`'语文'` 是给结果列起别名，不写 `as` 也可以。
+
+`case when` 的执行顺序是从上往下，**一旦某个 `when` 命中就直接返回，后面不再判断**。所以分数线要从高往低写，先写 80 再写 60；反过来先写 60，那 90 分也会被 60 那条抓住，变成"及格"。
+
+---
+
+## 五、聚合函数（常配合 `GROUP BY` 使用）
+
+聚合函数和前面几组不一样：前面是一行进去一行出来，聚合是**多行进去一行出来**，用来做统计。
+
+| 函数 | 作用 | 初学者易踩坑点 |
+| :--- | :--- | :--- |
+| `count(*)` / `count(col)` | 统计行数 | `count(*)` 统计所有行；`count(列名)` 会**忽略该列为 `null` 的行** |
+| `sum(col)` | 求总和 | 自动忽略 `null` 值 |
+| `avg(col)` | 求平均值 | 自动忽略 `null` 值（不会把 `null` 当 `0` 算） |
+| `max(col)` / `min(col)` | 求最大值 / 最小值 | 也可用于日期和字符串比较 |
+
+```sql
+-- 按班级统计人数与平均分，且只保留平均分大于 75 的班级
+select
+    class_id,
+    count(*) as 人数,
+    round(avg(score), 1) as 平均分
+from students
+group by class_id
+having avg(score) > 75;
+```
+
+几个要点：
+
+* `group by` 后面写哪列，就是按哪列分组，一组算出一行结果；`select` 里没被聚合的列，必须出现在 `group by` 里。
+* 分组后的过滤条件用 `having`，不能用 `where`。`where` 在分组前筛行，`having` 在分组后筛组。
+* `avg` 算的是"非空值的平均"，不是"所有行的平均"。如果这一列有 `null`，分母会变小，算出来可能比你想的高。
+* `count(列名)` 少算的行，就是这一列值为 `null` 的行；想统计总行数就用 `count(*)`。
+
+---
+
+## 六、进阶一点点
+
+### 1. `concat` 碰上 `null` 会全军覆没
+
+```sql
+select concat('hello', null, 'mysql');   -- 结果是 null
+```
+
+`concat` 里只要有一个参数是 `null`，整个结果就是 `null`。要防止这种情况，先用 `ifnull` 兜一下：
+
+```sql
+select concat('hello', ifnull(null, ''), 'mysql');
+```
+
+### 2. `date_format`：把日期变成想要的格式
+
+脚本里没写，但和日期函数是一套，很常用：
+
+```sql
+select date_format(now(), '%Y年%m月%d日');
+```
+
+`%Y` 四位年、`%m` 两位月、`%d` 两位日，中间可以夹任意文字。
+
+### 3. 函数写在 `where` 里，索引可能用不上
+
+```sql
+-- 不推荐：entrydate 被 year() 包了一层，索引失效，只能全表扫描
+select * from employee where year(entrydate) = 2026;
+
+-- 推荐：把范围算出来直接比，索引能用
+select * from employee where entrydate >= '2026-01-01' and entrydate < '2027-01-01';
+```
+
+规律是：`where` 条件左边的字段**光着**放，别包函数。函数套在右边的值上没关系。
+
+### 4. 几个脚本外但好用的
+
+| 函数 | 作用 | 例子 |
+| :--- | :--- | :--- |
+| `concat_ws(分隔符, ...)` | 用分隔符拼接，自动跳过 `null` | `concat_ws('-','2026','11','25')` → `2026-11-25` |
+| `replace(原串, 旧, 新)` | 替换子串 | `replace('13800138000','00','**')` |
+| `char_length(str)` | 字符个数（汉字算 1 个） | `char_length('你好MySQL')` → `7` |
+| `abs(x)` | 绝对值 | `abs(-15)` → `15` |
+
+---
+
+## 七、几个容易踩的坑
+
+* **`substring` 从 1 开始数**：写 `substring('abcdef',0,3)` 什么都取不到。
+* **`lpad` 的第二个参数是总长度**：不是补几个；而且原串比目标长度还长时会**从右边截断**，`lpad('hello',3,'-')` 结果是 `hel`。
+* **`datediff` 是第一个减第二个**：顺序写反结果是负数，不是报错，很容易看漏。
+* **`ifnull` 只认 `null`**：`''`、`0` 都不算空，照样原样返回。
+* **`if` 嵌套太多不好读**：超过三个分支就换 `case when`。
+* **`case when` 从上往下命中就停**：范围判断要从大到小、从高到低写。
+* **聚合函数不能直接写在 `where` 里**：`where count(*) > 10` 会报错，要用 `having`。
+* **`select` 里用函数不改数据**：想让结果落库，得套进 `update`，像工号补零那条语句一样。
+
+---
+
+## 八、复习用：函数速查
+
+| 分类 | 脚本里的函数 | 一条能记住的写法 |
+| :--- | :--- | :--- |
+| 字符串 | `concat`、`lower`、`upper`、`lpad`、`rpad`、`trim`、`substring` | `select lpad('01',10,'-');` |
+| 数值 | `ceil`、`floor`、`mod`、`rand`、`round` | `select round(2.34567,2);` |
+| 日期 | `curdate`、`curtime`、`now`、`year`、`month`、`day`、`date_add`、`datediff` | `select datediff(curdate(),entrydate) from employee;` |
+| 流程控制 | `if`、`ifnull`、`case when` | `select if(true,'ok','error');` |
+| 聚合 | `count`、`sum`、`avg`、`max`、`min` | `select count(*) from employee;` |
+
+记不住的时候抓三条规律：
+
+* **想加工一行里的某个值**：字符串、数值、日期、流程控制函数，随便套，套几层都行。
+* **想把多行汇总成一行**：用聚合函数，大概率要配 `group by`，筛选用 `having`。
+* **想让结果落地**：`select` 只是预览，真要改表得写 `update ... set 字段 = 函数(字段)`。
+</script>
+<script type="text/plain" data-doc="07">
+# MySQL 事务学习笔记
+
+> **一句话理解**：事务就是把几条 SQL "打包"成一个整体，要么全部成功，要么全部作废——不能出现"钱扣了但没到账"这种做了一半的情况。事务只有 InnoDB 引擎支持（MySQL 8.0 默认就是 InnoDB）。
+
+---
+
+## 一、先看转账：为什么需要事务
+
+张三给李四转 1000 元，数据库里要做两步：
+
+1. 张三余额 `- 1000`
+2. 李四余额 `+ 1000`
+
+这两步必须绑在一起。如果第 1 步执行完，数据库突然断电、或者第 2 步报错，张三的钱扣了、李四却没收到，账就对不上了。有了事务，只要中间出错，就可以**回滚（`rollback`）**，把两步一起撤销，回到转账前的样子。
+
+---
+
+## 二、操作演示
+
+对应项目里的 `04.事务\01_操作演示.sql`，演示的是上面这个转账。
+
+### 1. 准备数据
+
+```sql
+create database itheima_02;
+use itheima_02;
+
+create table account(
+    id int primary key auto_increment comment '主键id',
+    name varchar(50) comment '名字',
+    money int comment '余额'
+) comment '账户表';
+
+insert into account(name, money) values ('张三', 2000), ('李四', 2000);
+
+-- 这行是"重置数据"，演示乱了就再执行一次，两个人又都回到 2000
+update account set money = 2000 where name in ('张三', '李四');
+```
+
+建好之后两个人都是 2000，一共 4000。
+
+### 2. 先看一眼自动提交开关
+
+```sql
+select @@autocommit;      -- 结果 1
+set @@autocommit = 0;     -- 改成 0，当前窗口就不再自动提交了
+```
+
+`autocommit = 1` 是默认值，意思是每写一条 `insert/update/delete` 就立刻生效、立刻提交。改成 `0` 之后，这些语句就"悬"在那里：**你自己查得到变化，但没 `commit` 就不算数**，关掉窗口会自动回滚。
+
+### 3. 方式一：关掉自动提交，手动 commit / rollback
+
+```sql
+-- 1. 查一下张三余额，2000
+select money from account where name = '张三';
+
+-- 2. 张三 -1000（执行完自己再查，是 1000）
+update account set money = money - 1000 where name = '张三';
+
+-- 3. 李四 +1000
+update account set money = money + 1000 where name = '李四';
+
+-- 4. 后悔了，回滚：两个人又回到 2000
+rollback;
+
+-- 5. 重新来一遍，这次确定没错了，提交
+update account set money = money - 1000 where name = '张三';
+update account set money = money + 1000 where name = '李四';
+commit;   -- 提交后：张三 1000，李四 3000，这次真的改了
+```
+
+两个地方要留意：
+
+* 两条 `update` 都执行了，为什么 `rollback` 一下像没发生过？因为它们都在同一个事务里，回滚是整个事务一起撤销。
+* `commit` 之后就不能再 `rollback` 了，事务已经结束，再执行 `rollback` 什么也不干。想反悔必须在 `commit` 之前。
+
+演示完记得把开关改回来，不然之后这个窗口所有语句都要自己提交：
+
+```sql
+set @@autocommit = 1;
+```
+
+### 4. 方式二：`start transaction`（平时用这个）
+
+```sql
+start transaction;   -- 开启事务，也可以写 begin;
+
+select money from account where name = '张三';                        -- 2000
+update account set money = money - 1000 where name = '张三';          -- 张三 1000
+update account set money = money + 1000 where name = '李四';          -- 李四 3000
+
+commit;    -- 两步都没问题，提交
+-- rollback; -- 中间出错，回滚，全撤销
+```
+
+它和方式一的效果一样，区别是 `start transaction` 只管这一小段，`commit` / `rollback` 之后自动回到"自动提交"的状态，不用手动改开关。
+
+| | 方式一 `autocommit = 0` | 方式二 `start transaction` |
+| :--- | :--- | :--- |
+| 管到哪 | 这个窗口后面**所有**语句 | 只管到 `commit` / `rollback` 为止 |
+| 结束之后 | 还是手动模式，得自己改回 1 | 自动恢复自动提交 |
+| 建议 | 容易忘，演示用 | 推荐，随用随开 |
+
+### 5. 进阶：保存点 `savepoint`
+
+一个事务很长时，可以插一个"存档点"，出错只退回存档点，前面的操作保住了：
+
+```sql
+start transaction;
+update account set money = money - 100 where name = '张三';
+
+savepoint sp1;                                         -- 存个档
+
+update account set money = money - 5000 where name = '李四';  -- 这一步有问题
+
+rollback to sp1;                                       -- 只撤销上面这一步，张三那 100 还在
+commit;
+```
+
+---
+
+## 三、四大特性（ACID）
+
+| 特性 | 大白话 | 靠什么做到（了解即可） |
+| :--- | :--- | :--- |
+| **原子性** Atomicity | 事务要么全做完，要么全不做，没有"做一半" | 回滚日志 `undo log`：每改一行，先把旧值记下来，回滚照着旧值改回去 |
+| **一致性** Consistency | 转账前后，两个人加起来的总钱数不变，数据始终合法 | 是目的，靠另外三个特性一起保证 |
+| **隔离性** Isolation | 多个事务同时跑，互相不干扰，看不到对方没提交的东西 | 锁 + `MVCC`（多版本）：读的时候给你看一个快照，写的时候加锁 |
+| **持久性** Durability | `commit` 之后数据就落盘了，断电重启也不会丢 | 重做日志 `redo log`：提交时先把改动记到日志并刷盘，重启后照着日志补 |
+
+记的时候抓重点：**原子性管"全做或全不做"，一致性管"账要对得上"，隔离性管"并发别互相捣乱"，持久性管"提交了就不丢"**。
+
+---
+
+## 四、并发事务的三个问题
+
+多个窗口同时操作同一批数据，就可能出下面三种问题。三个问题都是"**别人在中间动了手**"，区别在于动了什么：
+
+| 问题 | 一句话 | 关键点 |
+| :--- | :--- | :--- |
+| **脏读** | 读到了别人**还没提交**的数据 | 别人后面一回滚，你读到的就是假数据 |
+| **不可重复读** | 同一次事务里，同一行数据两次读出来**不一样** | 中间别人 `update` 并且提交了 |
+| **幻读** | 同一次事务里，同样的条件两次查出来的**行数不一样** | 中间别人 `insert` 或 `delete` 并且提交了 |
+
+拿账户表说：
+
+* 脏读：张三明明还是 2000，另一个窗口改成 1000 还没提交，你就读到了 1000，结果人家回滚了，你拿着 1000 去做判断，全错。
+* 不可重复读：你在一个事务里先查张三 2000，隔一会儿再查变成 3000，同一个事务里两次结果不一致。
+* 幻读：你按 `money > 1500` 查出 2 条，过一会儿再查变 3 条，凭空多出来一行。
+
+不可重复读和幻读容易混：**前者是同一行的内容变了，后者是行数变了。**
+
+---
+
+## 五、并发事务演示（要开两个窗口）
+
+并发问题一个人演不出来，得开两个 MySQL 客户端窗口（下面叫**窗口 A**、**窗口 B**），让 A 查、B 改。项目里对应两个脚本，要分别放进两个窗口：
+
+* `04.事务\02_并发事务演示及隔离级别_01.sql`：窗口 A（查询端），五个演示都从这里开始。
+* `04.事务\03_并发事务演示及隔离级别_02.sql`：窗口 B（修改端），配合着改数据。
+
+两个脚本按注释里标好的"第几步"来回切换执行，**在同一个窗口里从头跑到尾是演示不出来的**。窗口 B 保持默认的 `REPEATABLE READ` 就行，只负责改数据，这样才看得出窗口 A 设的级别起了什么作用。
+
+### 1. 准备
+
+两个窗口都先执行，把数据恢复成张三、李四各 2000：
+
+```sql
+use itheima_02;
+update account set money = 2000 where name in ('张三', '李四');  -- 数据回到初始值
+```
+
+### 2. 演示一：脏读
+
+窗口 A 设成 `read uncommitted`，允许自己读别人还没提交的数据：
+
+```sql
+-- ===== 窗口 A =====
+set session transaction isolation level read uncommitted;   -- 只改当前窗口的隔离级别
+start transaction;
+select * from account;   -- 第1步：张三 2000
+-- 第2步：去窗口 B 把张三改成 1000（不提交），再回来
+select * from account;   -- 第3步：张三 1000 —— B 没提交也被读到了
+-- 第4步：回窗口 B 执行 rollback，再回来
+select * from account;   -- 第5步：又回到 2000，刚才读到的 1000 是脏数据
+rollback;
+```
+
+```sql
+-- ===== 窗口 B =====
+start transaction;
+update account set money = money - 1000 where name = '张三';   -- 改了，先不提交
+-- 等窗口 A 做完第3步，再执行下面这句
+rollback;                                                      -- 撤销，A 读到的 1000 是假的
+```
+
+脏读的关键：**读到的数据根本不算数**，B 一 `rollback`，A 手里那份就作废了。
+
+### 3. 演示二：不可重复读
+
+```sql
+-- ===== 窗口 A =====
+set session transaction isolation level read committed;   -- 改成"只能读已提交的"
+start transaction;
+select money from account where name = '张三';   -- 第1步：2000
+-- 第2步：去窗口 B 把张三改成 3000 并提交，再回来
+select money from account where name = '张三';   -- 第3步：3000 —— 同一个事务里变了
+commit;
+```
+
+```sql
+-- ===== 窗口 B =====
+start transaction;
+update account set money = 3000 where name = '张三';
+commit;   -- 这次是真提交，A 在同一个事务里再查就变了
+```
+
+同一个事务里两次读同一行，结果不一样，就是不可重复读。
+
+### 4. 演示三：幻读
+
+```sql
+-- ===== 窗口 A =====
+set session transaction isolation level read committed;
+start transaction;
+select count(*) from account where money > 1500;   -- 第1步：2 条（张三 3000、李四 2000）
+-- 第2步：去窗口 B 插入王五并提交，再回来
+select count(*) from account where money > 1500;   -- 第3步：3 条 —— 多了一行
+commit;
+```
+
+```sql
+-- ===== 窗口 B =====
+start transaction;
+insert into account(name, money) values ('王五', 5000);
+commit;   -- 多出来的一行就是"幻影"
+```
+
+同样的条件，行数从 2 变 3，多出来的那条就是"幻影"。
+
+演示完把王五删掉，恢复原样：
+
+```sql
+delete from account where name = '王五';
+```
+
+### 5. 演示四：可重复读（默认级别）
+
+这是对照实验：把演示二的事在默认级别下再做一遍。此时张三 3000。
+
+```sql
+-- ===== 窗口 A =====
+set session transaction isolation level REPEATABLE READ;   -- 默认级别
+start transaction;
+select money from account where name = '张三';   -- 第1步：3000
+-- 第2步：去窗口 B 把张三改成 3500 并提交，再回来
+select money from account where name = '张三';   -- 第3步：还是 3000，事务里只看开始时的快照
+commit;
+select money from account where name = '张三';   -- 3500：提交后新事务才看得到
+```
+
+```sql
+-- ===== 窗口 B =====
+start transaction;
+update account set money = 3500 where name = '张三';
+commit;   -- 这次是真提交
+```
+
+同一个事务里两次查询结果一致，这就是"可重复读"。
+
+### 6. 演示五：串行化
+
+最严格的级别：A 的事务没结束，B 想改同一批数据只能排队等。
+
+```sql
+-- ===== 窗口 A =====
+set session transaction isolation level serializable;
+start transaction;
+select * from account;   -- 第1步：查出来的行都被加上了锁
+-- 第2步：去窗口 B 改李四余额，会看到 B 一直卡着不动
+commit;                  -- 第3步：A 提交放锁，B 那句 update 立刻执行完
+```
+
+```sql
+-- ===== 窗口 B =====
+start transaction;
+update account set money = money - 100 where name = '李四';   -- 会被锁住，等 A 提交
+commit;
+```
+
+B 卡住不是报错，是在等锁；默认最多等 50 秒左右，超时才会报 `Lock wait timeout exceeded`，重跑一遍就行。
+
+### 7. 为什么平时看不到这些现象
+
+MySQL 默认的隔离级别是 `REPEATABLE READ`，一个事务从头到尾看的是同一份快照，所以演示二、三直接用默认级别跑，第二次查的结果都不会变——**必须先 `set session transaction isolation level ...` 把级别调下来才能演示出来**。
+
+另外注意：隔离级别是**窗口级**的，A 窗口设成 `read committed`，B 窗口还是默认的 `repeatable read`，互不影响；而且只对之后新开的事务生效。
+
+演示完把数据恢复一下（脚本末尾已经带了这一句）：
+
+```sql
+update account set money = 2000 where name in ('张三', '李四');
+```
+
+---
+
+## 六、隔离级别
+
+既然并发会出问题，隔离级别就是用来"压住"这些问题的，级别越高越安全、但越慢。上一节的五个演示正好把四个级别各过了一遍：演示一用 `read uncommitted`，演示二、三用 `read committed`，演示四用 `repeatable read`，演示五用 `serializable`。
+
+| 隔离级别 | 脏读 | 不可重复读 | 幻读 | 说明 |
+| :--- | :---: | :---: | :---: | :--- |
+| `READ UNCOMMITTED`（读未提交） | 会发生 | 会发生 | 会发生 | 别人没提交的也能读到，最不安全，基本只用来做演示 |
+| `READ COMMITTED`（读已提交） | 避免 | 会发生 | 会发生 | 只能读已提交的，Oracle / PostgreSQL 默认 |
+| **`REPEATABLE READ`（可重复读）** | **避免** | **避免** | **基本避免** | **MySQL 默认级别，平时不用改** |
+| `SERIALIZABLE`（串行化） | 避免 | 避免 | 避免 | 强制排队执行，最安全也最慢 |
+
+```sql
+-- 查看当前窗口的隔离级别（MySQL 8.0）
+select @@transaction_isolation;
+
+-- 查看全局默认值
+select @@global.transaction_isolation;
+
+-- 只改当前窗口，重开窗口就恢复默认（演示时用这个）
+set session transaction isolation level read committed;
+
+-- 改全局默认：只对之后新开的连接生效，已经开着的窗口不变
+set global transaction isolation level read committed;
+```
+
+平时开发不用动它，默认的 `REPEATABLE READ` 已经够用，只有演示或者有特殊需求时才改。
+
+---
+
+## 七、几个容易踩的坑
+
+* **`commit` 之后回滚不了**：事务已经结束，`rollback` 是空的。要撤销必须在 `commit` 之前。
+* **`autocommit = 0` 忘了改回来**：之后这个窗口的语句都悬着不落库，看着像"改了又没了"；关掉窗口也会自动回滚。演示完执行 `set @@autocommit = 1;`。
+* **建表、删表会顺手提交事务**：事务还没 `commit` 就执行 `create` / `alter` / `drop` / `truncate`，前面的修改会被一起提交掉，回滚不回来了。所以 DDL 别和业务 SQL 混在一个事务里。
+* **只有 InnoDB 支持事务**：建表时引擎写成 `MyISAM`，`start transaction` 白开、`rollback` 也没用。用 `show create table account;` 看最后一行 `ENGINE=` 确认。
+* **事务别开太久**：改过的行会被锁住，另一个窗口改同一行会一直等，等到超时报 `Lock wait timeout exceeded`。演示时两个窗口都别忘了 `commit` 或 `rollback`。
+* **两个窗口要各设各的隔离级别**：`set session ...` 只影响执行它的那个窗口。
+
+---
+
+## 八、复习用：事务关键字速查
+
+| 作用 | 语句 |
+| :--- | :--- |
+| 开启事务 | `start transaction;` 或 `begin;` |
+| 提交事务 | `commit;` |
+| 回滚事务 | `rollback;` |
+| 设置保存点 | `savepoint sp1;` |
+| 回滚到保存点 | `rollback to sp1;` |
+| 关闭自动提交 | `set @@autocommit = 0;` |
+| 打开自动提交 | `set @@autocommit = 1;` |
+| 查看隔离级别 | `select @@transaction_isolation;` |
+| 修改当前窗口隔离级别 | `set session transaction isolation level read committed;` |
+
+记三句话就够：**开事务 → 干活 → 成功 `commit`、失败 `rollback`**；四大特性是 ACID；并发三个问题（脏读、不可重复读、幻读）靠隔离级别压住，MySQL 默认的可重复读基本能应付日常。
+</script>
+<script type="text/plain" data-doc="08">
+# MySQL 约束学习笔记
+
+> **一句话理解**：约束就是建表时给字段定的"规矩"。以后 `insert`、`update` 数据时，数据库先按规矩检查一遍，不合规矩就直接报错，数据存不进去。
+
+---
+
+## 一、常用的 6 种约束
+
+| 约束 | 写法 | 规矩 |
+| :--- | :--- | :--- |
+| 主键 | `primary key` | 不能重复、不能为空，一张表只能有一个，常配 `auto_increment` 自增 |
+| 非空 | `not null` | 这一列必须填值，不能留空 |
+| 唯一 | `unique` | 这一列的值不能重复 |
+| 默认值 | `default` | 插入时没写这一列，就自动填默认值 |
+| 检查 | `check (条件)` | 值必须满足条件，比如年龄在 0~120 之间（MySQL 8.0.16 以后才真正生效） |
+| 外键 | `foreign key` | 这一列的值必须在另一张表里查得到 |
+
+两个容易记错的点：
+
+* `unique` 只管"不重复"，**空值可以有好几条**；要"不重复且不能空"，得写成 `not null unique`。
+* 主键自己就包含了"非空 + 唯一"，所以主键列不用再写 `not null`。
+
+---
+
+## 二、建表时直接加约束（`user` 表）
+
+对应项目里的 `02.约束操作\约束演示.sql`：
+
+```sql
+use itheima;
+
+create table user(
+    id int primary key auto_increment comment '主键',     -- 主键，还带自增
+    name varchar(10) not null unique comment '姓名',      -- 非空 + 唯一
+    age int check (age > 0 && age < 120) comment '年龄',  -- 检查：年龄在 0~120
+    status char(1) default '1' comment '状态',            -- 默认值 '1'
+    gender varchar(5) comment '性别'
+) comment '用户表';
+```
+
+逐列看一遍：
+
+* `id`：主键 + 自增，插入时不用管它，数据库自己从 1 开始往上加。
+* `name`：不能为空，也不能重名。
+* `age`：只能填 0 到 120 之间的数（`&&` 就是 `and`，项目里用的是 `&&`）。
+* `status`：插入时不写这一列，就自动填 `'1'`。
+* `gender`：什么约束都没加，随便填。
+
+### 插几条数据验证一下
+
+```sql
+-- 正常插入：id 不用写，自增
+insert into user(name, age, status, gender) values ('Tom1', 19, '1', 'man'),
+                                                   ('Tom2', 25, '0', 'man'),
+                                                   ('Tom3', 22, '1', 'woman'),
+                                                   ('Tom4', 27, '1', 'man');
+
+-- 失败：name 为 null，违反非空
+insert into user(name, age, status, gender) values (null, 16, '1', 'man');
+
+-- 失败：已有 Tom3，违反唯一
+insert into user(name, age, status, gender) values ('Tom3', 16, '1', 'man');
+
+-- 失败：年龄 -1 超出 0~120（上一句已经插过 Tom5，这条同时也重名了）
+insert into user(name, age, status, gender) values ('Tom5', -1, '1', 'man');
+
+-- 成功：没写 status，自动填默认值 '1'
+insert into user(name, age, gender) values ('Tom6', 46, 'man');
+```
+
+约束的作用就是这几次失败：数据根本没进库，不用等程序后面再去查错。
+
+---
+
+## 三、表建好了，怎么加、怎么删
+
+语法都是 `alter table 表名 ...`，改的是表结构，不会去改表里已有的数据。
+
+### 1. 主键
+
+```sql
+-- 加主键
+alter table user add primary key (id);
+
+-- 删主键：主键带自增的话，先去掉自增，否则删不掉
+alter table user modify id int;
+alter table user drop primary key;
+```
+
+### 2. 非空
+
+```sql
+-- 加非空（modify 是把整列重新定义一遍，类型要照着原来的写）
+alter table user modify name varchar(10) not null;
+
+-- 删非空：把 not null 换成 null
+alter table user modify name varchar(10) null;
+```
+
+### 3. 唯一
+
+```sql
+-- 加唯一，顺便自己起个名字 uk_name
+alter table user add constraint uk_name unique (name);
+
+-- 删唯一
+alter table user drop index uk_name;
+```
+
+建表时如果像 `name varchar(10) not null unique` 这样没起名字，MySQL 会直接拿列名 `name` 当索引名，那就得用 `alter table user drop index name;` 来删。
+
+### 4. 默认值
+
+```sql
+-- 加默认值
+alter table user alter column status set default '1';
+
+-- 删默认值
+alter table user alter column status drop default;
+```
+
+### 5. 检查
+
+```sql
+-- 加检查，起名 chk_user_age
+alter table user add constraint chk_user_age check (age > 0 && age < 120);
+
+-- 删检查
+alter table user drop check chk_user_age;
+```
+
+建表时没起名字的检查约束，MySQL 会自动叫 `user_chk_1` 这种名字，先 `show create table user;` 看一眼实际叫什么，再删。
+
+### 6. 外键
+
+对应项目里的 `02.约束操作\外键约束.sql`，`dept` 是部门表，`emp` 是员工表，员工表的 `dept_id` 指向部门表的 `id`：
+
+```sql
+-- 加外键
+alter table emp add constraint fk_emp_dept_id
+    foreign key (dept_id) references dept(id);
+
+-- 删外键
+alter table emp drop foreign key fk_emp_dept_id;
+```
+
+加外键前要满足三个条件，否则加不上：`emp.dept_id` 和 `dept.id` 的类型完全一样；`dept.id` 是主键（或唯一）；`emp` 里已经存在的 `dept_id` 在 `dept` 里都查得到。
+
+外键删除后，它顺手建的那个索引还在，想清干净就再来一句：
+
+```sql
+alter table emp drop index fk_emp_dept_id;
+```
+
+---
+
+## 四、建表的时候直接把外键写好
+
+项目脚本里外键是建完表再 `alter table` 补的，其实建表时就能一起写完。外键要写在**所有字段的最后面**（表级），不能像 `not null` 那样直接跟在字段后面：
+
+```sql
+-- 1. 先建父表 dept（被引用的表要先存在）
+create table dept(
+    id int auto_increment comment 'ID' primary key,
+    name varchar(50) not null comment '部门名称'
+) comment '部门表';
+
+-- 2. 再建子表 emp，最后一行写外键
+create table emp(
+    id int primary key auto_increment comment '员工ID',
+    name varchar(50) not null comment '姓名',
+    dept_id int comment '部门ID',
+
+    constraint fk_emp_dept_id
+        foreign key (dept_id) references dept(id)
+) comment '员工表';
+```
+
+几个要注意的地方：
+
+* **建表顺序不能反**：`emp` 引用了 `dept`，所以 `dept` 必须先建，否则找不到要引用的表。
+* **外键名字可以自己起**：`constraint fk_emp_dept_id` 这行不写也行，MySQL 会自动命名，但后面删外键时得先查它叫什么，不如自己起。
+* **删除 / 更新行为也能在建表时写**：直接接在 `references dept(id)` 后面，比如 `references dept(id) on delete cascade`。
+* **效果和 `alter table` 补外键完全一样**，区别只是写的时机：一个是建表时一次性写全，一个是表建好后单独加。
+* **插数据也要按顺序**：先插 `dept`，再插 `emp`；给 `emp.dept_id` 填一个 `dept` 里没有的 id，会插不进去。
+
+---
+
+## 五、进阶一点点：外键的删除和更新行为
+
+对应项目里的 `02.约束操作\外键删除更新行为.sql`。
+
+不加任何设置时，外键默认是 `restrict`：部门里还有员工，就不许删这个部门，也不许改它的 `id`。想让它自动处理，就在 `references dept(id)` 后面加两句——`on update` 管"改部门 id 时怎么办"，`on delete` 管"删部门时怎么办"：
+
+```sql
+-- 第一种：级联
+alter table emp
+add constraint fk_emp_dept_id              -- 约束名字，方便以后删
+foreign key (dept_id)                      -- emp 里的外键列
+references dept(id)                        -- 引用 dept 的 id
+on update cascade                          -- 改 dept.id，员工的 dept_id 跟着改
+on delete cascade;                         -- 删部门，这个部门的员工一起删掉
+```
+
+```sql
+-- 第二种：置空
+alter table emp
+add constraint fk_emp_dept_id
+foreign key (dept_id)
+references dept(id)
+on update set null                         -- 改 dept.id，员工的 dept_id 变成 null
+on delete set null;                        -- 删部门，员工留着，dept_id 变成 null
+```
+
+三种行为对比：
+
+| 写法 | 删部门时 | 改部门 id 时 |
+| :--- | :--- | :--- |
+| 不写（默认 `restrict`） | 部门里还有员工就报错，删不掉 | 同样报错，改不了 |
+| `cascade` | 员工跟着一起删 | 员工的 `dept_id` 跟着改 |
+| `set null` | 员工留着，`dept_id` 变成 `null` | 同左 |
+
+两个小提醒：
+
+* `set null` 要求这一列允许为空。`emp.dept_id` 建表时没写 `not null`，所以能用；如果写了 `not null`，就会报错。
+* 项目脚本里两段 `alter` 用的是同一个约束名 `fk_emp_dept_id`，实际演示时只能留一个：想从 `cascade` 换成 `set null`，先 `alter table emp drop foreign key fk_emp_dept_id;` 删掉，再加新的。
+
+`cascade` 是连锁反应，删一个部门可能带走一批员工，删之前先 `select * from emp where dept_id = 要删的id;` 看一眼。
+
+---
+
+## 六、几个容易踩的坑
+
+* **`unique` 允许重复的空值**：可以插好几条 `name` 为 `null` 的记录（前提是没加 `not null`）。
+* **给已有数据的表加约束，先看数据合不合规**：表里已经有重名的，`add unique` 会失败；已经有年龄超范围的，`add check` 也会失败。先把不合规的旧数据改掉或删掉。
+* **有外键的两张表，删表要先删子表**：先删 `emp`，再删 `dept`；对 `dept` 直接 `truncate` 也会被外键拦住。
+
+---
+
+## 七、复习用：六种约束关键字速查
+
+| 约束 | 关键字 | 怎么加（以项目表为例） | 怎么删 |
+| :--- | :--- | :--- | :--- |
+| 非空 | `not null` | 建表时 `name varchar(10) not null`，或 `alter table user modify name varchar(10) not null;` | `alter table user modify name varchar(10) null;` |
+| 唯一 | `unique` | 建表时 `name varchar(10) unique`，或 `alter table user add constraint uk_name unique (name);` | `alter table user drop index uk_name;` |
+| 主键 | `primary key`（常配 `auto_increment`） | 建表时 `id int primary key auto_increment`，或 `alter table user add primary key (id);` | `alter table user drop primary key;`（带自增要先 `modify id int`） |
+| 默认 | `default` | 建表时 `status char(1) default '1'`，或 `alter table user alter column status set default '1';` | `alter table user alter column status drop default;` |
+| 检查 | `check` | 建表时 `age int check (age > 0 && age < 120)`，或 `alter table user add constraint chk_user_age check (age > 0 && age < 120);` | `alter table user drop check chk_user_age;` |
+| 外键 | `foreign key ... references` | 建表最后一行写，或 `alter table emp add constraint fk_emp_dept_id foreign key (dept_id) references dept(id);` | `alter table emp drop foreign key fk_emp_dept_id;` |
+
+记不住的时候抓两条规律：
+
+* 写在字段后面的：`not null`、`unique`、`default`、`check`、`primary key`；外键例外，只能写在所有字段最后。
+* 删的时候只有主键、唯一、检查、外键能直接 `drop`；非空和默认值没有 `drop` 语法，是用 `modify` / `alter column` 把这一列改成"没有约束"的样子。
+</script>
+<script type="text/plain" data-doc="09">
+# MySQL 多表查询学习笔记
+
+> **一句话理解**：多表查询就是把有关系的几张表拼成一张大表来查。拼的时候必须告诉数据库"这两张表按哪个字段对上"，不然每条数据和每条数据两两组合，结果会炸成一大片无意义的行（这就是笛卡尔积）。
+
+---
+
+## 一、先认识项目里的两张老表：`dept` 和 `emp`
+
+多表查询的脚本都在 `itheima` 库上跑，用的就是约束那一章建好的两张表：
+
+* `dept`（部门表）：`id`、`name`，一共 5 条——1 研发部、2 市场部、3 财务部、4 销售部、5 总经办。
+* `emp`（员工表）：`id`、`name`、`age`、`job`、`salary`、`entrydate`、`managerid`（直属上级的 id）、`dept_id`（所在部门 id）。
+
+对应项目里的 `03.多表查询\03_多表查询具体实现.sql`，正式查询前先把数据换成"金庸那个版本"：
+
+```sql
+use itheima;
+
+-- 部门表补一个 6 号部门
+insert into dept(id, name) values (6, '人事部');
+
+-- 员工表清空重插，一共 17 个人
+truncate table emp;
+insert into emp (id, name, age, job, salary, entrydate, managerid, dept_id) values
+(1,  '金庸',   66, '总裁',         20000.00, '2000-01-01', null, 5),
+(2,  '张无忌', 20, '项目经理',     12500.00, '2005-12-05', 1,    1),
+(3,  '杨逍',   33, '开发',          8400.00, '2000-11-03', 2,    1),
+-- 中间省略
+(17, '陈友谅', 42, null,            2000.00, '2011-10-12', 1,    null);
+```
+
+这批数据埋了两个"坑"，后面的外连接正好用得上：
+
+* **金庸没有上级**，他的 `managerid` 是 `null`（老板嘛）。
+* **陈友谅没有部门**，他的 `dept_id` 是 `null`。
+
+另外要记住：部门表现在有 6 个，但**人事部（6 号）一个人都没招**，这也是后面演示用的。
+
+---
+
+## 二、建表时就要想清楚：两张表是什么关系
+
+`01`、`02` 两个脚本演示的是"建表阶段"的关系，库换成了 `itheima_01`。关系无非三种：
+
+| 关系 | 长什么样 | 项目里的例子 |
+| :--- | :--- | :--- |
+| 一对多 | 一个部门有多个员工，员工只属于一个部门 | `dept` 对 `emp`，员工表里存 `dept_id` |
+| 一对一 | 一个用户只有一份教育信息 | `tb_user` 对 `tb_user_edu`，靠 `unique` 卡住 |
+| 多对多 | 一个学生选多门课，一门课被多个学生选 | `student` 和 `course`，靠中间表 `student_course` |
+
+### 1. 多对多：必须有一张中间表
+
+`01_多表关系演示-多对多.sql` 里建了三张表：
+
+```sql
+-- 学生表
+create table student(
+    id int auto_increment primary key comment '主键id',
+    name varchar(50) comment '姓名',
+    no varchar(10) comment '学号'
+) comment '学生表';
+
+-- 课程表
+create table course(
+    id int auto_increment primary key comment '主键id',
+    name varchar(50) comment '课程名称'
+) comment '课程表';
+
+-- 中间表：只干一件事，记录"谁选了哪门课"
+create table student_course(
+    id int auto_increment comment '主键' primary key,
+    studentId int not null comment '学生id',
+    courseId int not null comment '课程id',
+    constraint fk_courseid foreign key (courseId) references course(id),
+    constraint fk_studentid foreign key (studentId) references student(id)
+) comment '学生课程中间表';
+```
+
+为什么不能直接在 `student` 里加一列"课程"？
+
+* 一个学生选了 3 门课，这一列就得存 `'java,python,c++'` 这种一坨字符串，查"谁选了 java"只能靠模糊匹配，根本没法建外键。
+* 中间表把一对多拆成两条一对多：`student` 对中间表是一对多，`course` 对中间表也是一对多。以后要查"张伟选了什么课"，三张表连起来就行。
+
+插入顺序也有讲究：先插 `student` 和 `course`，再插中间表，因为中间表的两列都是外键：
+
+```sql
+insert into student_course(studentid, courseid) values
+    (1,1),(1,2),
+    (1,3),(2,2),
+    (2,3),(3,4);
+```
+
+读法就是：1 号学生（张伟）选了 1、2、3 号课，2 号学生（李娜）选了 2、3 号课，3 号学生（王强）选了 4 号课。
+
+### 2. 一对一：靠 `unique` 卡住
+
+`02_多表关系演示-一对一.sql` 里 `tb_user` 存基本信息，`tb_user_edu` 存教育信息，靠 `user_id` 关联。但光有外键只是"一对多"——一个用户可以对应好几句教育信息。
+
+```sql
+-- 给 user_id 加唯一约束，一个用户就只能有一条教育信息了
+alter table tb_user_edu add unique (user_id);
+
+-- 手机号也顺手加上，一个手机号只能属于一个用户
+alter table tb_user add unique (phone);
+```
+
+**一对一和一对多的区别就在这个 `unique` 上**：大家都是外键，加了唯一才是"一对一"。
+
+---
+
+## 三、笛卡尔积：多表查询第一个要打的怪
+
+`03_多表查询具体实现.sql` 里第一句就是故意写错的：
+
+```sql
+select * from dept, emp;
+```
+
+没写连接条件，数据库就按"每一条部门 × 每一条员工"全部组合一遍。6 个部门 × 17 个员工 = **102 行**，里面绝大多数都是"研发部 + 财务部的张无忌"这种不存在的组合。
+
+要消灭它，加上连接条件就行——`emp.dept_id` 等于 `dept.id`，意思是"这个员工属于这个部门"：
+
+```sql
+select * from emp, dept where emp.dept_id = dept.id order by emp.id;
+```
+
+这时结果变成 16 行。为什么不是 17 行？因为陈友谅的 `dept_id` 是 `null`，对不上任何部门，被这条条件筛掉了。
+
+**规律**：N 张表连接，至少要写 N-1 个连接条件，条件通常就是"子表的外键 = 父表的主键"。
+
+---
+
+## 四、内连接：只要两边都对得上的
+
+`04_多表查询内连接.sql` 演示了两种写法，效果完全一样，只是写法不同。
+
+### 1. 隐式内连接（用逗号 + `where`）
+
+```sql
+-- 查询每一个员工的姓名，以及他所在部门的名称
+select emp.name '员工姓名', dept.name '部门名称'
+from emp, dept
+where emp.dept_id = dept.id;
+```
+
+这就是上一节消灭笛卡尔积的写法，`from` 后面用逗号隔开两张表，条件全塞 `where` 里。好处是顺手，坏处是表一多，`where` 里连接条件和过滤条件混在一起，看着乱。
+
+### 2. 显式内连接（`inner join ... on`）
+
+```sql
+select e.name, d.name
+from emp e inner join dept d on e.dept_id = d.id;
+```
+
+* `inner` 可以省略，直接写 `join` 就是内连接。
+* `on` 后面专门写**连接条件**，逻辑上是"先拼表"，拼完再用 `where` 过滤，两者分开了，比隐式清楚。
+* `emp e` 是给表起别名。**起了别名之后，前面 `select` 里就不能再写 `emp.name` 了，必须写 `e.name`**，脚本里特意注释了这一点。
+
+内连接的结果就是"两边都能对上"的部分。所以陈友谅（没部门）和人事部（没员工）都不会出现。
+
+---
+
+## 五、外连接：某一方的数据全都要留着
+
+`05_多表查询外连接.sql`。内连接会丢数据，外连接就是"以我为主，另一边能配上就配，配不上就留空"。
+
+### 1. 左外连接（`left join`）
+
+**左表（`from` 后面那张）的数据一条不丢**，去右表找匹配，找不到的右表字段填 `null`。
+
+```sql
+-- 查询 emp 表的所有数据，和对应部门的信息
+select emp.*, dept.name from emp left join dept on emp.dept_id = dept.id;
+```
+
+跑出来是 **17 行**：16 个有部门的正常显示，陈友谅也留着，只是他的"部门名称"显示为 `null`。写 `dept.name` 而不是 `dept.*`，是因为部门表的 `id` 和员工表的 `id` 重名，选出来两列都叫 `id`，不好认。
+
+### 2. 右外连接（`right join`）
+
+**右表的数据一条不丢**，左表匹配不上的填 `null`：
+
+```sql
+select dept.*, emp.* from emp right join dept on emp.dept_id = dept.id;
+```
+
+这次同样是 **17 行**，但内容不一样：16 个有部门的员工正常显示，再加上人事部这一条孤零零的部门（员工那一侧全是 `null`）。陈友谅却没在里面——右外连接只保证右表不丢数据，他匹配不到任何部门，照样被扔掉了。
+
+**一句话对比**：左外连接丢"没部门的员工"，右外连接丢"没员工的部门"，看你想保哪一头。
+
+**日常习惯**：想要哪张表的数据全留着，就把那张表放左边、用 `left join`。这样所有查询都是 `left join`，不用一会儿左一会儿右地换脑子。脚本注释里也说了，`outer` 这个词纯属废话，写不写都行。
+
+---
+
+## 六、自连接：一张表自己连自己
+
+`06_多表查询自连接.sql`。`emp` 表里每行都有 `managerid` 指向本表的 `id`——上级也是员工，存在同一张表里。要查"员工叫啥、他领导叫啥"，就得把 `emp` 当成两张表用，**必须起两个不同的别名**：
+
+```sql
+-- 查员工和所属领导的名字（领导查不到的不显示）
+select
+    e.name as '员工姓名',
+    m.name as '所属领导姓名'
+from emp e
+join emp m on e.managerid = m.id;
+```
+
+`e` 代表"作为员工的自己"，`m` 代表"作为领导的自己"。`e.managerid = m.id` 就是"我的上级 id 等于某个人的 id"。
+
+这句是内连接，所以**金庸不会出现**（他是总裁，`managerid` 是 `null`，对不上任何人），结果 16 行。要把老板也查出来，换 `left join`：
+
+```sql
+select
+    A.name as '员工姓名',
+    B.name as '所属领导姓名'
+from emp A
+left join emp B on A.managerid = B.id;
+```
+
+这样 17 个人全在，金庸的"所属领导姓名"是 `null`。
+
+**判断要不要自连接**：一张表里有一列"存的是本表另一个人的 id"，比如员工的上级、评论的父评论、分类的父分类。
+
+---
+
+## 七、联合查询（`union` / `union all`）
+
+`07_联合查询.sql`。前面几种都是**左右拼列**，`union` 是**上下拼行**——把两个查询的结果摞成一张表。
+
+脚本里的需求：把"工资低于 5000 的"和"年龄大于 50 的"都查出来。
+
+```sql
+-- union all：直接摞起来，不去重
+select * from emp where salary < 5000
+union all
+select * from emp where age > 50;
+
+-- union：摞起来之后去掉完全重复的行
+select * from emp where salary < 5000
+union
+select * from emp where age > 50;
+```
+
+按项目里的数据算一下：
+
+* 工资低于 5000 的 3 个人：鹿杖客 3750、鹤笔翁 3750、陈友谅 2000。
+* 年龄大于 50 的 4 个人：金庸 66、灭绝 60、鹿杖客 56、张三丰 88。
+* 鹿杖客两边都占，所以 `union all` 是 3 + 4 = **7 行**，`union` 去掉重复的鹿杖客，是 **6 行**。
+
+两条规则：
+
+* **上下两个 `select` 的列数必须一样，列的类型也要对得上**，不然 MySQL 直接报错。脚本里两边都用 `select *`，天然一致。
+* 结果集的列名以**第一个 `select`** 为准。
+* 能不去重就不去重，`union all` 少一步排序去重，快一些。
+
+---
+
+## 八、子查询：`select` 里再套一个 `select`
+
+`08_子查询.sql`。把一条查询的结果，当成另一条查询的条件或一张临时表。
+
+判断属于哪一类，就看**括号里的 `select` 返回几行几列**：
+
+| 类型 | 返回什么 | 用在哪 | 常用符号 |
+| :--- | :--- | :--- | :--- |
+| 标量子查询 | 1 行 1 列（一个值） | `where` 里当值用 | `=` `>` `<` |
+| 列子查询 | 多行 1 列（一列值） | `where` 里当一堆值用 | `in` `not in` `any` `some` `all` |
+| 行子查询 | 1 行多列 | 几个字段一起比 | `(a, b) = (...)` |
+| 表子查询 | 多行多列 | 放在 `from` 后面当表用 | `in`、起别名后 `join` |
+
+### 1. 标量子查询：括号里只出一个值
+
+```sql
+-- 分两步想：先查出销售部的 id，再用这个 id 去查员工
+select id from dept where name = '销售部';      -- 结果是 4
+select * from emp where dept_id = 4;
+
+-- 合成一句话
+select * from emp where dept_id = (select id from dept where name = '销售部');
+```
+
+```sql
+-- 查方东白入职之后入职的员工是谁
+select * from emp where entrydate > (select entrydate from emp where name = '方东白');
+```
+
+括号里的查询只会返回一个值（一个 id、一个日期），所以外面用 `=`、`>` 这种比较符号就行。**如果括号里返回好几行，用 `=` 会报错**，那时候就该换 `in` 了。
+
+### 2. 列子查询：括号里出一列值
+
+```sql
+-- 1. 查销售部和市场部的所有员工
+select * from emp where dept_id in (select id from dept where name = '销售部' or name = '市场部');
+```
+
+`in` 后面括号里可能是 `4, 2` 这样的多个值，意思是"等于其中任意一个"。
+
+```sql
+-- 2. 比财务部所有员工工资都高的人
+select * from emp where salary > all (select salary from emp where dept_id = (select id from dept where name = '财务部'));
+```
+
+财务部三个人的工资是 8500、48000、5250，`> all` 就是"比最大的 48000 还大"。项目数据里没人超过 48000，所以这句查出来是空结果——`all` 就是这么严。
+
+```sql
+-- 3. 比研发部任意一人工资高的人
+select * from emp where salary > any (select salary from emp where dept_id = (select id from dept where name = '研发部'));
+```
+
+研发部最低是 6600，`> any` 就是"比最小的 6600 大就算"，范围一下宽很多。`some` 和 `any` 完全等价，写哪个都行。
+
+记法：**`all` 全部满足（比最大的还大），`any` 任意一个满足（比最小的大）**。
+
+注意这两句里 `from emp where dept_id = (...)` 又套了一层，这种"子查询里还有子查询"是允许的，从最里面往外读就行。
+
+### 3. 行子查询：一行几个字段一起比
+
+```sql
+-- 查和张无忌工资、直属领导都一样的员工
+select * from emp where (salary, managerid) = (select salary, managerid from emp where name = '张无忌');
+```
+
+括号里返回 `(12500, 2)` 这样一对值，外面的 `(salary, managerid)` 也是一个括号，两边对应着比，**必须个数和顺序都一致**。如果拆成 `salary = (...) and managerid = (...)` 写两个子查询也能出结果，但行子查询一句话搞定。
+
+### 4. 表子查询：把查询结果当一张表用
+
+```sql
+-- 查和鹿杖客、宋远桥职位和薪资都相同的人
+select * from emp where (job, salary) in (select job, salary from emp where name in ('鹿杖客', '宋远桥'));
+```
+
+括号里返回两行多列，用 `=` 不可能对得上，所以改成 `in`：只要我的 `(职位, 薪资)` 和其中某一行的组合一样，就算命中。
+
+```sql
+-- 查 2006-01-01 之后入职的员工，以及他们的部门信息
+select * from (select * from emp where entrydate > '2006-01-01') e
+left join dept on e.dept_id = dept.id;
+```
+
+括号里的查询结果被当成一张临时表，**起个别名 `e` 才能用**，然后拿它去 `left join` 部门表。这种写法适合"先把大表筛小，再和其他表连"，比在 `join ... on` 里塞一堆条件更直观。这里用 `left join`，是为了让没部门的陈友谅也留下来（他 2011 年入职，正好符合这个日期条件，不留下就查无此人了）。
+
+---
+
+## 九、几个容易踩的坑
+
+* **忘写连接条件，直接出笛卡尔积**：`select * from dept, emp;` 102 行，看着能跑，其实全是垃圾数据。表越多越恐怖，三张 100 行的表能出 100 万行。
+* **起了别名就不能再用原表名**：`select emp.name from emp e ...` 会报错"Unknown column"，一律改写成 `e.name`。
+* **`left join` 里过滤右表，条件要放 `on` 里**：想查"所有员工 + 研发部的名称"，如果写 `where dept.name = '研发部'`，陈友谅和别的部门的人会被整行删掉，`left join` 就退化成 `inner join` 了。写在 `on` 后面才是"只影响右表匹配，左表该留的还留"。
+* **子查询返回多行却用 `=`**：`where salary = (select salary from emp ...)` 一旦括号里出两行就报错，先想清楚它到底返回一行还是多行。
+* **`union` 两边列数不一致**：`select id, name` 配 `select name` 会直接报错，因为没法对齐。
+* **一对一漏了 `unique`**：只加外键只是"一对多"，`tb_user_edu` 里同一个 `user_id` 能插好几条。
+* **中间表漏了外键**：多对多中间表的两个列都要能被父表约束住，不然会插进"不存在的学生选了不存在的课"。
+
+---
+
+## 十、复习用：多表查询关键字速查
+
+| 类型 | 关键字 / 写法 | 项目里的例子 | 结果特点 |
+| :--- | :--- | :--- | :--- |
+| 笛卡尔积 | `from 表1, 表2`（无连接条件） | `select * from dept, emp;` | 6 × 17 = 102 行垃圾数据 |
+| 隐式内连接 | `from 表1, 表2 where 连接条件` | `select emp.name, dept.name from emp, dept where emp.dept_id = dept.id;` | 只留两边都对得上的，16 行 |
+| 显式内连接 | `表1 join 表2 on 连接条件` | `select e.name, d.name from emp e join dept d on e.dept_id = d.id;` | 和隐式一样，16 行 |
+| 左外连接 | `表1 left join 表2 on 连接条件` | `select emp.*, dept.name from emp left join dept on emp.dept_id = dept.id;` | 左表全留，陈友谅的部门为 `null`，17 行 |
+| 右外连接 | `表1 right join 表2 on 连接条件` | `select dept.*, emp.* from emp right join dept on emp.dept_id = dept.id;` | 右表全留，人事部员工为 `null` |
+| 自连接 | `表1 a join 表1 b on 条件` | `select A.name, B.name from emp A left join emp B on A.managerid = B.id;` | 员工和上级，金庸的上级为 `null` |
+| 联合查询 | `union` / `union all` | `select * from emp where salary < 5000 union select * from emp where age > 50;` | 上下拼行，`union` 去重、`union all` 不去重 |
+| 标量子查询 | `where 字段 = (子查询)` | `where dept_id = (select id from dept where name = '销售部')` | 子查询出一个值 |
+| 列子查询 | `where 字段 in / any / all (子查询)` | `where dept_id in (select id from dept where name = '销售部' or name = '市场部')` | 子查询出一列值 |
+| 行子查询 | `where (字段1, 字段2) = (子查询)` | `where (salary, managerid) = (select salary, managerid from emp where name = '张无忌')` | 子查询出一行多列 |
+| 表子查询 | `from (子查询) 别名` | `from (select * from emp where entrydate > '2006-01-01') e left join dept ...` | 子查询当临时表 |
+
+记不住时抓三条主线：
+
+* **左右拼列**用 `join`：要交集选 `inner join`，要某一方的全部选 `left join` / `right join`。
+* **上下拼行**用 `union`，两边列数必须一样。
+* **条件里套查询**用子查询，括号返回一个值就用 `=`，返回一列就用 `in`，返回一张表就放到 `from` 后面起别名。
+</script>
+
+  <script>
+    /* ======================== 0. 元数据 ======================== */
+    const DOCS = [
+      { id: '01', title: 'DDL：数据定义', desc: '建库建表、加列改列、删表清空——先把结构搭起来，再谈往里放数据。', tags: ['CREATE TABLE', 'ALTER', 'DROP', '索引'] },
+      { id: '02', title: 'DML：数据操作', desc: '单行与多行新增、按条件改和删，以及忘写 WHERE 的代价。', tags: ['INSERT', 'UPDATE', 'DELETE', 'NULL'] },
+      { id: '03', title: 'DQL：数据查询', desc: '条件、聚合、分组、排序、分页，一条 SELECT 的完整套路与真实执行顺序。', tags: ['SELECT', 'GROUP BY', 'HAVING', 'LIMIT'] },
+      { id: '04', title: 'DCL：数据控制', desc: '建账号、授权限、收权限，谁能连库、能看哪张表都在这里定。', tags: ['GRANT', 'REVOKE', '账号'] },
+      { id: '05', title: '进阶补充', desc: '前四篇没展开的部分：引擎字符集、写入形态、窗口函数、角色权限。', tags: ['视图', '窗口函数', '角色', 'CHECK'] },
+      { id: '06', title: '数据库函数操作', desc: '字符串、数值、日期、流程控制，把值加工成想要的样子，再决定落不落库。', tags: ['字符串函数', '日期函数', 'CASE', '聚合'] },
+      { id: '07', title: '数据库事务', desc: 'ACID、脏读幻读、四种隔离级别——转账不能只做一半。', tags: ['ACID', '隔离级别', 'COMMIT', 'ROLLBACK'] },
+      { id: '08', title: '数据库约束操作', desc: '主键、非空、唯一、默认、检查、外键，六条规矩把坏数据挡在门外。', tags: ['主键', '外键', 'UNIQUE', 'CHECK'] },
+      { id: '09', title: '数据库多表查询', desc: '内外连接、自连接、联合查询与四种子查询，把几张表拼成一张来查。', tags: ['JOIN', 'UNION', '子查询', '笛卡尔积'] }
+    ];
+
+    /* 笔记原文：来自页面内 <script type="text/plain"> 块，渲染时转成卡片式章节 */
+    const SRC = {};
+    document.querySelectorAll('script[data-doc]').forEach(el => {
+      SRC[el.dataset.doc] = el.textContent;
+    });
+
+    const CACHE = {};
+    let current = null;
+
+    /* ======================== 1. 文本工具 ======================== */
+    function esc(s) {
+      return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function codeSpan(s) {
+      return s.split('`').map((part, i) =>
+        i % 2 ? `<code>${esc(part)}</code>` : esc(part)
+      ).join('');
+    }
+
+    function inline(s) {
+      let out = '', i = 0, m;
+      const re = /`([^`]+)`|\*\*([\s\S]+?)\*\*|\[([^\]]+)\]\(([^)\s]+)\)/g;
+      while ((m = re.exec(s)) !== null) {
+        out += esc(s.slice(i, m.index));
+        if (m[1] !== undefined) {
+          out += `<code>${esc(m[1])}</code>`;
+        } else if (m[2] !== undefined) {
+          out += `<strong>${codeSpan(m[2])}</strong>`;
+        } else {
+          const jump = /^(?:\.\/)?(\d{2})[-.][^\/]*\.md$/.exec(m[4]);
+          out += jump && SRC[jump[1]]
+            ? `<a href="#/${jump[1]}">${esc(m[3])}</a>`
+            : `<a href="${esc(m[4])}" target="_blank" rel="noopener">${esc(m[3])}</a>`;
+        }
+        i = m.index + m[0].length;
+      }
+      return out + esc(s.slice(i));
+    }
+
+    function isCJK(ch) { return /[\u4e00-\u9fa5\u3000-\u303f\uff00-\uffef]/.test(ch); }
+
+    function joinPara(lines) {
+      let s = lines[0] || '';
+      for (let k = 1; k < lines.length; k++) {
+        const prev = s.charAt(s.length - 1), next = lines[k].charAt(0);
+        s += (isCJK(prev) && isCJK(next) ? '' : ' ') + lines[k];
+      }
+      return s;
+    }
+
+    function plain(s) { return s.replace(/`/g, '').replace(/\*\*/g, ''); }
+
+    /* ======================== 2. SQL 语法高亮 ======================== */
+    const KW = new Set(('select from where insert into values update set delete create table database schema if not exists ' +
+      'default character set use alter add column modify change drop truncate index on primary key unique ' +
+      'foreign references constraint and or is null like in between order by group having desc asc limit ' +
+      'offset distinct as join inner left right cross outer union all any some case when then else end ' +
+      'show tables grants grant revoke to user identified account lock unlock privileges flush role view ' +
+      'replace interval day month year hour minute second begin start transaction commit rollback savepoint ' +
+      'explain engine convert collate cascade restrict check comment auto_increment unsigned signed int ' +
+      'integer bigint tinyint smallint varchar char decimal float double enum date datetime timestamp time ' +
+      'text blob over partition true false').split(' '));
+
+    function highlight(src) {
+      const re = /(--[^\n]*|#[^\n]*|\/\*[\s\S]*?\*\/)|('(?:[^'\\]|\\.|'')*')|("(?:[^"\\]|\\.)*")|(`[^`]*`)|(\b\d+(?:\.\d+)?\b)|(@@?[A-Za-z0-9_.]+)|([A-Za-z_][A-Za-z0-9_$]*)|([\s\S])/g;
+      let out = '', m;
+      while ((m = re.exec(src)) !== null) {
+        if (m[1] !== undefined) out += `<span class="cmt">${esc(m[1])}</span>`;
+        else if (m[2] !== undefined) out += `<span class="str">${esc(m[2])}</span>`;
+        else if (m[3] !== undefined) out += `<span class="str">${esc(m[3])}</span>`;
+        else if (m[4] !== undefined) out += `<span class="str">${esc(m[4])}</span>`;
+        else if (m[5] !== undefined) out += `<span class="num">${esc(m[5])}</span>`;
+        else if (m[6] !== undefined) out += `<span class="kw">${esc(m[6])}</span>`;
+        else if (m[7] !== undefined) {
+          if (KW.has(m[7].toLowerCase())) out += `<span class="kw">${esc(m[7])}</span>`;
+          else if (/^\s*\(/.test(src.slice(re.lastIndex))) out += `<span class="fn">${esc(m[7])}</span>`;
+          else out += esc(m[7]);
+        } else out += esc(m[8]);
+      }
+      return out;
+    }
+
+    /* ======================== 3. Markdown → 卡片式章节 ======================== */
+    function codeBlock(raw, lang) {
+      const l = (lang || 'text').toLowerCase();
+      const body = (l === 'sql' || l === 'mysql') ? highlight(raw) : esc(raw);
+      return `<div class="code-block">
+        <div class="code-head"><span>${esc(l === 'mysql' ? 'sql' : l)}</span><button class="copy-btn" type="button">复制</button></div>
+        <pre><code>${body}</code></pre>
+      </div>`;
+    }
+
+    function splitRow(line) {
+      return line.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map(c => c.trim());
+    }
+
+    function tableHTML(head, rows) {
+      let out = '<div class="table-wrap"><table><thead><tr>';
+      head.forEach(c => { out += `<th>${inline(c)}</th>`; });
+      out += '</tr></thead><tbody>';
+      rows.forEach(r => {
+        out += '<tr>';
+        for (let j = 0; j < head.length; j++) out += `<td>${inline(r[j] || '')}</td>`;
+        out += '</tr>';
+      });
+      return out + '</tbody></table></div>';
+    }
+
+    /* 引用块 → 提示框（按关键词自动配色） */
+    function calloutHTML(text) {
+      let title = '', body = text, cls = 'callout';
+      const m = /^\*\*(.+?)\*\*\s*[：:]?\s*/.exec(text);
+      if (m) {
+        title = plain(m[1]).replace(/[：:]$/, '');
+        body = text.slice(m[0].length);
+        if (/注意|坑|风险|危险|小心/.test(title)) cls += ' warn';
+        else if (/理解|记忆|核心|目的/.test(title)) cls += ' good';
+        else if (/进阶|原理|补充|延伸/.test(title)) cls += ' deep';
+        else if (/禁止|不要/.test(title)) cls += ' danger';
+      }
+      return `<div class="${cls}">${title ? `<span class="callout-title">${esc(title)}</span>` : ''}${inline(body)}</div>`;
+    }
+
+    /* 补充说明 → 带标签的浅底提示 */
+    function hintHTML(text) {
+      const m = /^\*\*(.+?)\*\*\s*[：:]?\s*/.exec(text);
+      if (!m) return `<p class="hint">${inline(text)}</p>`;
+      const label = plain(m[1]).replace(/[：:]$/, '');
+      return `<p class="hint"><span class="hint-label">${esc(label)}</span>${inline(text.slice(m[0].length))}</p>`;
+    }
+
+    function renderDoc(id) {
+      const meta = DOCS.find(d => d.id === id);
+      const lines = SRC[id].replace(/\r\n?/g, '\n').split('\n');
+      const nav = [];
+      let intro = [], body = [], html = '', chNum = 0, i = 0;
+
+      const flushChapter = () => {
+        if (!body.length) return;
+        const item = nav[nav.length - 1];
+        html += `<section class="chapter" id="${item.id}">
+          <div class="chapter-header">
+            <span class="chapter-badge">${item.num}</span>
+            <h2>${item.html}</h2>
+          </div>
+          ${body.join('')}
+        </section>`;
+        body = [];
+      };
+
+      while (i < lines.length) {
+        const line = lines[i];
+        let m;
+
+        /* 代码块 */
+        if (/^```/.test(line)) {
+          const lang = line.slice(3).trim() || 'text';
+          const buf = [];
+          i++;
+          while (i < lines.length && !/^```/.test(lines[i])) { buf.push(lines[i]); i++; }
+          i++;
+          (chNum ? body : intro).push(codeBlock(buf.join('\n'), lang));
+          continue;
+        }
+
+        /* 表格 */
+        if (/^\s*\|/.test(line) && i + 1 < lines.length && /^\s*\|[\s:|-]+\|?\s*$/.test(lines[i + 1])) {
+          const head = splitRow(line), rows = [];
+          i += 2;
+          while (i < lines.length && /^\s*\|/.test(lines[i])) { rows.push(splitRow(lines[i])); i++; }
+          (chNum ? body : intro).push(tableHTML(head, rows));
+          continue;
+        }
+
+        /* 标题 */
+        if ((m = /^(#{1,4})\s+(.*)$/.exec(line))) {
+          const level = m[1].length, text = m[2].trim();
+          if (level === 2) {
+            flushChapter();
+            chNum++;
+            nav.push({ id: `sec-${chNum}`, num: String(chNum).padStart(2, '0'), html: inline(text), plain: plain(text) });
+          } else if (level === 3 || level === 4) {
+            (chNum ? body : intro).push(`<h${level}>${inline(text)}</h${level}>`);
+          }
+          i++;
+          continue;
+        }
+
+        if (/^-{3,}\s*$/.test(line)) { i++; continue; }
+        if (/^\s*$/.test(line)) { i++; continue; }
+
+        /* 引用 → 提示框 */
+        if (/^>\s?/.test(line)) {
+          const bq = [];
+          while (i < lines.length && /^>\s?/.test(lines[i])) { bq.push(lines[i].replace(/^>\s?/, '')); i++; }
+          (chNum ? body : intro).push(calloutHTML(bq.join(' ')));
+          continue;
+        }
+
+        /* 补充说明 */
+        if (/^~\s+/.test(line)) {
+          (chNum ? body : intro).push(hintHTML(line.replace(/^~\s+/, '')));
+          i++;
+          continue;
+        }
+
+        /* 无序列表 */
+        if (/^[-*]\s+/.test(line)) {
+          const items = [];
+          while (i < lines.length && /^[-*]\s+/.test(lines[i])) { items.push(lines[i].replace(/^[-*]\s+/, '')); i++; }
+          (chNum ? body : intro).push(`<ul>${items.map(t => `<li>${inline(t)}</li>`).join('')}</ul>`);
+          continue;
+        }
+
+        /* 有序列表 */
+        if (/^\d+\.\s+/.test(line)) {
+          const items = [];
+          while (i < lines.length && /^\d+\.\s+/.test(lines[i])) { items.push(lines[i].replace(/^\d+\.\s+/, '')); i++; }
+          (chNum ? body : intro).push(`<ol>${items.map(t => `<li>${inline(t)}</li>`).join('')}</ol>`);
+          continue;
+        }
+
+        /* 普通段落 */
+        const para = [];
+        while (i < lines.length && !isBlockStart(lines[i])) { para.push(lines[i].trim()); i++; }
+        if (!para.length) { i++; continue; }
+        (chNum ? body : intro).push(`<p>${inline(joinPara(para))}</p>`);
+      }
+      flushChapter();
+
+      let out = `<header class="hero" data-mark="${meta.id}">
+        <div class="hero-tags">${meta.tags.map(t => `<span class="hero-tag">${esc(t)}</span>`).join('')}</div>
+        <h1>${esc(meta.title)}</h1>
+        <p>${esc(meta.desc)}</p>
+      </header>`;
+
+      if (intro.length) out += `<section class="chapter">${intro.join('')}</section>`;
+      out += html;
+      out += '<footer class="doc-footer">本篇内容与同目录原始笔记一致 · 按 Ctrl + P 可导出 PDF</footer>';
+
+      return { html: out, nav };
+    }
+
+    function isBlockStart(t) {
+      return /^\s*$/.test(t) || /^#{1,4}\s/.test(t) || /^```/.test(t) || /^>\s?/.test(t) ||
+        /^~\s+/.test(t) || /^[-*]\s+/.test(t) || /^\d+\.\s+/.test(t) ||
+        /^\s*\|/.test(t) || /^-{3,}\s*$/.test(t);
+    }
+
+    /* ======================== 4. 首页卡片墙 ======================== */
+    document.getElementById('card-grid').innerHTML = DOCS.map(d => `
+      <a class="entry-card" href="#/${d.id}">
+        <div class="entry-top">
+          <span class="entry-num">${d.id}</span>
+          <span class="entry-go">→</span>
+        </div>
+        <h3>${esc(d.title)}</h3>
+        <p>${esc(d.desc)}</p>
+        <div class="entry-tags">${d.tags.map(t => `<span class="pill blue">${esc(t)}</span>`).join('')}</div>
+      </a>
+    `).join('');
+
+    /* ======================== 5. 视图切换 ======================== */
+    const viewHome = document.getElementById('view-home');
+    const viewReader = document.getElementById('view-reader');
+    const docBody = document.getElementById('doc-body');
+    const navList = document.getElementById('nav-list');
+    const sidebar = document.getElementById('sidebar');
+
+    function closeSidebar() { sidebar.classList.remove('open'); }
+
+    function showHome() {
+      current = null;
+      viewReader.hidden = true;
+      viewHome.hidden = false;
+      document.title = 'MySQL 数据库操作笔记 · 九篇合集';
+      window.scrollTo(0, 0);
+      updateProgress();
+    }
+
+    function showDoc(id) {
+      const meta = DOCS.find(d => d.id === id);
+      if (!meta) return showHome();
+      const data = CACHE[id] || (CACHE[id] = renderDoc(id));
+
+      current = id;
+      document.getElementById('brand-num').textContent = id;
+      document.getElementById('brand-title').textContent = meta.title;
+      document.getElementById('brand-sub').textContent = `9 篇 · 第 ${id} 篇 · 共 ${data.nav.length} 节`;
+      document.getElementById('mobile-title').textContent = meta.title;
+      document.title = `${meta.title} | MySQL 数据库操作笔记`;
+
+      docBody.innerHTML = data.html;
+      navList.innerHTML = data.nav.map((n, k) => `
+        <li><a href="#${n.id}" data-target="${n.id}"${k === 0 ? ' class="active"' : ''}>
+          <span class="nav-num">${n.id.replace('sec-', '')}</span>${esc(n.plain)}
+        </a></li>
+      `).join('');
+
+      closeSidebar();
+      viewHome.hidden = true;
+      viewReader.hidden = false;
+      window.scrollTo(0, 0);
+      updateProgress();
+      highlightNav();
+    }
+
+    function route() {
+      const hash = location.hash;
+      const m = /^#\/(\d{2})$/.exec(hash);
+      if (m && SRC[m[1]]) {
+        if (current !== m[1]) showDoc(m[1]);
+        return;
+      }
+      if (!hash || hash === '#' || hash === '#/') showHome();
+    }
+
+    window.addEventListener('hashchange', route);
+
+    /* ======================== 6. 目录点击 / 代码复制 / 主题 ======================== */
+    document.addEventListener('click', e => {
+      const navLink = e.target.closest('#nav-list a');
+      if (navLink) {
+        e.preventDefault();
+        const target = document.getElementById(navLink.dataset.target);
+        if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        navLink.classList.add('active');
+        closeSidebar();
+        return;
+      }
+
+      const copyBtn = e.target.closest('.copy-btn');
+      if (copyBtn) { copyCode(copyBtn); return; }
+
+      if (e.target.closest('[data-theme-toggle]')) { toggleTheme(); return; }
+    });
+
+    function copyCode(btn) {
+      const text = btn.closest('.code-block').querySelector('pre').textContent;
+      const done = ok => {
+        const old = btn.textContent;
+        btn.textContent = ok ? '已复制 ✓' : '请手动复制';
+        btn.classList.toggle('done', ok);
+        setTimeout(() => { btn.textContent = old; btn.classList.remove('done'); }, 1600);
+      };
+
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      let ok = false;
+      try { ok = document.execCommand('copy'); } catch (err) { ok = false; }
+      document.body.removeChild(ta);
+
+      if (ok) done(true);
+      else if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => done(true), () => done(false));
+      } else done(false);
+    }
+
+    /* 默认即 One Dark，data-theme="light" 时切到 One Light */
+    function syncThemeButtons() {
+      const light = document.documentElement.getAttribute('data-theme') === 'light';
+      document.querySelectorAll('[data-theme-toggle]').forEach(btn => {
+        btn.textContent = light ? '切换到深色' : '切换到浅色';
+      });
+    }
+
+    function toggleTheme() {
+      const root = document.documentElement;
+      const next = root.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+      root.setAttribute('data-theme', next);
+      try { localStorage.setItem('mysql_ops_notes_theme', next); } catch (e) {}
+      syncThemeButtons();
+    }
+
+    function initTheme() {
+      try {
+        if (localStorage.getItem('mysql_ops_notes_theme') === 'light') {
+          document.documentElement.setAttribute('data-theme', 'light');
+        }
+      } catch (e) {}
+      syncThemeButtons();
+    }
+
+    /* ======================== 7. 阅读进度与目录高亮 ======================== */
+    function updateProgress() {
+      const bar = document.getElementById('reading-progress');
+      if (!current) { bar.style.width = '0%'; return; }
+      const top = window.scrollY;
+      const height = document.documentElement.scrollHeight - window.innerHeight;
+      bar.style.width = (height > 0 ? Math.min(100, (top / height) * 100) : 0) + '%';
+    }
+
+    function highlightNav() {
+      if (!current) return;
+      const sections = docBody.querySelectorAll('section.chapter[id]');
+      if (!sections.length) return;
+      let activeId = sections[0].id;
+      sections.forEach(sec => {
+        if (sec.getBoundingClientRect().top <= 130) activeId = sec.id;
+      });
+      navList.querySelectorAll('a').forEach(a => {
+        a.classList.toggle('active', a.dataset.target === activeId);
+      });
+    }
+
+    function onScroll() {
+      updateProgress();
+      highlightNav();
+    }
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+
+    function toggleSidebar() {
+      sidebar.classList.toggle('open');
+    }
+
+    /* ======================== 8. 初始化 ======================== */
+    initTheme();
+    route();
+    updateProgress();
+  </script>
+</body>
+</html>

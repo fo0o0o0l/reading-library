@@ -8,13 +8,23 @@
 
 ```
 d:\手机看\
-├─ index.html                    资料索引（卡片列表 + 标签筛选）
+├─ index.html                     首页壳：只有结构，卡片由 JS 渲染
+├─ assets\
+│  ├─ notes-data.js               资料数据（唯一需要维护的清单）
+│  ├─ library.js                  首页逻辑：卡片渲染、标签筛选、关键词搜索、深色模式
+│  ├─ library.css                 首页样式
+│  ├─ note.css                    资料页统一样式（模板与后续新页面共用）
+│  └─ note.js                     资料页统一脚本：目录高亮、进度条、回顶、复制、深色模式
 ├─ notes\
-│  ├─ tcp-protocol-notes.html    TCP 协议学习笔记（自包含静态页）
-│  ├─ http-protocol-notes.html   HTTP 协议笔记（自包含静态页）
-│  └─ http-protocol-notes.md     HTTP 笔记的 Markdown 源稿（仅存档，未被站点引用）
-└─ README.md                     本文件
+│  ├─ _template.html              资料页模板（新资料从这里复制）
+│  ├─ tcp-protocol-notes.html     TCP 协议学习笔记
+│  ├─ http-protocol-notes.html    HTTP 协议笔记
+│  ├─ http-protocol-notes.md      HTTP 笔记的 Markdown 源稿（仅存档，未被站点引用）
+│  └─ mysql-notes.html            MySQL 数据库操作笔记（九篇合集，自带封面与路由）
+└─ README.md                      本文件
 ```
+
+**可扩展性：**首页不再逐篇堆 HTML。所有卡片数据集中在 [assets/notes-data.js](assets/notes-data.js)，标签筛选按钮由所有标签自动汇总，搜索框对标题、摘要、标签做纯前端匹配。新增一份资料 = 放一个页面文件 + 加一条数据，改一处即可。
 
 全站页面均已加 `<meta name="robots" content="noindex, nofollow">`，尽量不被搜索引擎收录。注意：这**不能阻止**任何拿到链接的人访问，公网托管的内容本质上是公开的。
 
@@ -52,15 +62,58 @@ ipconfig
 
 ## 新增一篇资料
 
-1. **放文件**：把文章放进 `notes\`，建议命名为英文短横线格式（如 `notes\http-cache-notes.html`）。页面需自包含：CSS/JS 内联，不引用外网 CDN；尽量不要放大图，必要图片先压缩并放进本地目录、用相对路径引用。
-2. **加卡片**：打开 `index.html`，复制 `id="list"` 里的任意一张 `<a class="card">`，改这几处：
-   - `href="notes/你的文件名.html"`
-   - `data-tags="标签A,标签B"`（筛选按钮会根据所有卡片自动生成，不用手改筛选区）
-   - `data-added="YYYY-MM-DD"`（列表按它倒序排列）
-   - 标题 `<h2>`、摘要 `<p class="card-desc">`
-   - 卡片底部 `card-foot` 里的标签 `<span class="tag">`、加入时间、阅读时长
-3. **本地预览**：`python -m http.server 8000`，浏览器打开 `http://localhost:8000`，点卡片确认正文与「返回目录」正常。
-4. **重新发布**：见下一节。
+### 第一步：用模板生成页面
+
+复制 `notes\_template.html`，改名为英文短横线格式（如 `notes\http-cache-notes.html`），然后用编辑器全局替换 `TODO` 处：
+
+| 要改的地方 | 说明 |
+| --- | --- |
+| `data-note-key="note-id"` | 改成唯一值（如 `http-cache`），用来分别记住每页的深色模式偏好 |
+| `<title>` / `<meta name="description">` | 页面标题与摘要 |
+| `.topbar-title` / 侧栏 `.brand` | 顶栏与侧栏显示的短标题、角标文字 |
+| `.side-meta` | 章数、小节数、阅读时长 |
+| `#toc` | 目录：每个 `h2` 配一个 `.toc-item`，每个 `h3` 配一个 `.toc-sub`，`data-target` 必须与正文的 `id` 一一对应 |
+| `.hero` | 标题、副标题、`.pills` 提示 |
+| `<article>` | 正文 |
+
+正文写法约定（样式已在 `assets/note.css` 里，不要在页面里另写 CSS）：
+
+- 章节标题用 `<h2 id="s2">2. 标题</h2>`，小节用 `<h3 id="s2-1">2.1 标题</h3>`，编号与目录保持一致。
+- 表格必须包一层 `<div class="table-wrap">`，窄屏才会横向滚动而不撑破页面。
+- 代码 / ASCII 图用 `.codeblock` + `<pre class="cb-pre ascii"><code>…</code></pre>` 结构，自动带复制按钮和横向滚动。
+- 提示块：普通用 `.callout`，勘误用 `.callout correction`；要点/记忆锚点用 `.aux brief` / `.aux remember`。
+- 行内代码用 `<code class="ic">…</code>`。
+
+### 第二步：在数据清单里登记
+
+打开 `assets/notes-data.js`，在 `window.NOTES` 数组里加一条（只有这一处，不用改 `index.html`）：
+
+```js
+{
+  id: 'http-cache',
+  title: 'HTTP 缓存笔记',
+  kicker: '网络协议 · 学习笔记',
+  desc: '一句话摘要，会显示在卡片上，也会被搜索命中。',
+  href: 'notes/http-cache-notes.html',
+  tags: ['网络', 'HTTP', '缓存'],
+  added: '2026-12-01',
+  minutes: '约 12 分钟'
+}
+```
+
+保存后首页会自动：按 `added` 倒序排卡片、汇总出新标签的筛选按钮、把新标题纳入搜索。列表条目很多时，靠搜索框和标签筛选仍然能快速定位。
+
+### 第三步：本地看一眼，再发布
+
+```powershell
+python -m http.server 8000
+```
+
+浏览器打开 `http://localhost:8000`，确认：卡片出现、标签能筛到、搜索能搜到、正文目录跳转正常、「返回资料目录」能回首页。然后按下节发布。
+
+### 现成页面需要改成统一风格时
+
+`notes\mysql-notes.html` 这类自带整套设计的多篇合集，可以直接保留自己的样式；只有在想统一外观时，才需要改成模板结构（把内容搬进模板的 `<article>`，删掉页面内联 `<style>`，换成 `../assets/note.css` + `note.js`）。
 
 ## 发布到公网
 
@@ -71,7 +124,7 @@ ipconfig
 在 `d:\手机看` 下执行：
 
 ```powershell
-git add index.html notes README.md
+git add -A
 git commit -m "Add notes: 新资料标题"
 git push
 ```
@@ -114,5 +167,6 @@ npx --yes vercel --prod
 
 - **公网 = 公开**：托管在 GitHub Pages / Vercel 的站点，任何拿到链接的人都能访问。`noindex` 只是降低被搜索引擎收录的概率，不等于访问控制。请不要把密码、密钥、公司内部资料放进来。
 - 页面为纯静态，无后端、无数据库、无构建产物；新增资料不需要安装依赖。
-- **流量友好**：全站无大图、无外链字体、无前端框架。首页约 12 KB，TCP 笔记约 110 KB（未压缩，GitHub Pages 会以 gzip 传输），移动流量下可快速打开。
+- **流量友好**：全站无大图、无外链字体、无前端框架。首页壳约 3 KB，加上数据与脚本共约 12 KB；TCP 笔记约 110 KB（未压缩，GitHub Pages 会以 gzip 传输），移动流量下可快速打开。
+- **目录能力**：标签筛选 + 纯前端关键词搜索（标题、摘要、标签），无后端、无第三方服务；资料数量增长后仍然可用。
 - 深色模式偏好保存在浏览器 `localStorage`，首次访问跟随系统设置。
