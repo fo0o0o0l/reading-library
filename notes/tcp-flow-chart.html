@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>TCP 开发流程图 · API 调用与内核状态机</title>
+<style>
+  :root{
+    --bg:#f6f7f9;
+    --panel:#ffffff;
+    --ink:#16324a;
+    --ink-soft:#5a6b7b;
+    --line:#dbe3ea;
+    --server:#35618c;
+    --client:#2f7a6f;
+    --warn:#a8642f;
+    --chip:#edf1f5;
+  }
+  *{box-sizing:border-box;}
+  html{-webkit-text-size-adjust:100%;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei","PingFang SC",sans-serif;
+    line-height:1.65;
+    -webkit-print-color-adjust:exact;
+    print-color-adjust:exact;
+  }
+  .page{max-width:1280px;margin:0 auto;padding:30px 24px 56px;}
+
+  header .eyebrow{
+    font-size:12px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--ink-soft);margin:0 0 6px;
+  }
+  header h1{
+    font-size:26px;line-height:1.3;margin:0 0 8px;font-weight:700;
+    letter-spacing:.01em;
+  }
+  header .sub{
+    margin:0;color:var(--ink-soft);font-size:14px;
+  }
+
+  .legend{
+    display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;
+    margin:18px 0 0;padding:10px 14px;
+    background:var(--panel);border:1px solid var(--line);border-radius:10px;
+    font-size:12.5px;color:var(--ink-soft);
+  }
+  .legend .dot{
+    display:inline-block;width:10px;height:10px;border-radius:50%;
+    vertical-align:middle;margin-right:6px;
+  }
+  .legend .sw-server{background:var(--server);}
+  .legend .sw-client{background:var(--client);}
+  .legend .sw-warn{background:var(--warn);}
+  .legend .badge{
+    display:inline-block;padding:1px 8px;border-radius:9px;background:var(--chip);
+    color:var(--ink);font-size:11.5px;border:1px solid var(--line);margin-right:6px;
+  }
+
+  .figure{
+    margin:22px 0 0;padding:10px 10px 6px;
+    background:var(--panel);border:1px solid var(--line);border-radius:12px;
+  }
+  .chart-wrap{overflow-x:auto;overflow-y:hidden;}
+
+  /* 返回阅读库 */
+  .lib-bar{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    padding:10px 0 0;
+  }
+  .lib-back{
+    display:inline-flex;align-items:center;gap:6px;
+    font-size:12.5px;font-weight:700;color:#2f628f;
+    background:#eaf1f8;border:1px solid #d8e3ee;border-radius:8px;
+    padding:5px 12px;text-decoration:none;
+  }
+  .lib-back:hover{background:#2f628f;color:#fff;border-color:#2f628f;}
+
+  /* 图表缩放工具条 */
+  .chart-tools{
+    display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;
+    gap:8px;margin:18px 0 -6px;
+  }
+  .chart-hint{font-size:12px;color:var(--ink-soft);}
+  .zoom{display:flex;gap:6px;}
+  .zoom button{
+    font-family:inherit;font-size:12px;color:var(--ink-soft);
+    background:var(--panel);border:1px solid var(--line);border-radius:8px;
+    padding:5px 10px;cursor:pointer;
+  }
+  .zoom button:hover{border-color:var(--server);color:var(--server);}
+  .zoom button.active{background:var(--server);border-color:var(--server);color:#fff;}
+  svg.chart{
+    display:block;width:100%;min-width:760px;height:auto;
+    font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei","PingFang SC",sans-serif;
+  }
+
+  section{margin-top:34px;}
+  section h2{
+    font-size:17px;margin:0 0 4px;font-weight:700;
+    padding-left:10px;border-left:3px solid var(--server);
+  }
+  section .lead{
+    margin:0 0 16px;color:var(--ink-soft);font-size:13px;
+  }
+
+  .grid{
+    display:grid;gap:12px;
+    grid-template-columns:repeat(auto-fit,minmax(270px,1fr));
+  }
+  .card{
+    background:var(--panel);border:1px solid var(--line);border-radius:11px;
+    padding:14px 16px 16px;
+  }
+  .card .tag{
+    display:inline-block;font-size:11px;letter-spacing:.08em;color:#fff;
+    background:var(--client);border-radius:5px;padding:1px 7px;margin-bottom:8px;
+  }
+  .card h3{font-size:14.5px;margin:0 0 6px;font-weight:700;}
+  .card p{margin:0;font-size:13px;color:var(--ink-soft);}
+  .card p strong{color:var(--ink);font-weight:600;}
+
+  .pitfalls{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));}
+  .pit{
+    display:flex;gap:12px;
+    background:var(--panel);border:1px solid var(--line);border-radius:11px;
+    padding:14px 16px;
+  }
+  .pit .num{
+    flex:0 0 26px;height:26px;width:26px;border-radius:50%;
+    background:#fdf4ee;border:1px solid #e2c3ad;color:#8a4a30;
+    font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;
+  }
+  .pit h3{font-size:14px;margin:2px 0 4px;font-weight:700;}
+  .pit p{margin:0;font-size:13px;color:var(--ink-soft);}
+  .pit code{
+    font-family:ui-monospace,SFMono-Regular,Consolas,"Liberation Mono",monospace;
+    font-size:12.5px;background:var(--chip);border:1px solid var(--line);
+    border-radius:4px;padding:0 4px;color:#254158;
+  }
+
+  footer{
+    margin-top:34px;padding-top:14px;border-top:1px solid var(--line);
+    color:var(--ink-soft);font-size:12px;
+  }
+
+  @media (max-width:640px){
+    .page{padding:22px 14px 40px;}
+    header h1{font-size:21px;}
+    svg.chart{min-width:700px;}
+  }
+
+  @media print{
+    body{background:#fff;}
+    .page{max-width:none;padding:0;}
+    .figure,.card,.pit{box-shadow:none;}
+    .chart-wrap{overflow:visible;}
+    svg.chart{min-width:0;width:100%;}
+    section,.card,.pit,.figure{break-inside:avoid;}
+    @page{margin:10mm;}
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="lib-bar">
+    <a class="lib-back" href="../index.html">← 复习阅读库</a>
+  </div>
+
+  <header>
+    <p class="eyebrow">TCP Programming Flow</p>
+    <h1>TCP 开发流程图：API 调用 ↔ 内核状态机</h1>
+    <p class="sub">左侧服务端、右侧客户端两条泳道；中间箭头为三次握手与四次挥手，节点下方徽标为内核 TCP 状态。</p>
+  </header>
+
+  <div class="legend">
+    <span><span class="dot sw-server"></span>服务端泳道</span>
+    <span><span class="dot sw-client"></span>客户端泳道</span>
+    <span><span class="dot sw-warn"></span>关键坑标记 ①–⑤</span>
+    <span><span class="badge">ESTABLISHED</span>内核状态徽标</span>
+    <span>实线箭头 = 报文段 / 控制流</span>
+  </div>
+
+  <div class="chart-tools">
+    <span class="chart-hint">手机上看不清时，可左右拖动图表，或用右侧按钮放大</span>
+    <div class="zoom">
+      <button type="button" data-zoom="fit">适应屏幕</button>
+      <button type="button" data-zoom="760" class="active">100%</button>
+      <button type="button" data-zoom="1000">130%</button>
+      <button type="button" data-zoom="1240">160%</button>
+    </div>
+  </div>
+
+  <figure class="figure">
+    <div class="chart-wrap">
+      <svg class="chart" viewBox="0 0 1240 1160" role="img"
+           aria-label="TCP 开发流程图：服务端与客户端 API 调用及三次握手、四次挥手、内核状态迁移">
+        <defs>
+          <marker id="arrowDown" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+            <path d="M0,0 L8,4 L0,8 Z" fill="#8aa2b6"></path>
+          </marker>
+          <marker id="arrowLeft" markerWidth="9" markerHeight="8" refX="1.5" refY="4" orient="auto">
+            <path d="M9,0 L0,4 L9,8 Z" fill="#35618c"></path>
+          </marker>
+          <marker id="arrowRight" markerWidth="9" markerHeight="8" refX="7.5" refY="4" orient="auto">
+            <path d="M0,0 L9,4 L0,8 Z" fill="#35618c"></path>
+          </marker>
+          <marker id="arrowLeftW" markerWidth="9" markerHeight="8" refX="1.5" refY="4" orient="auto">
+            <path d="M9,0 L0,4 L9,8 Z" fill="#a8642f"></path>
+          </marker>
+          <marker id="arrowRightW" markerWidth="9" markerHeight="8" refX="7.5" refY="4" orient="auto">
+            <path d="M0,0 L9,4 L0,8 Z" fill="#a8642f"></path>
+          </marker>
+        </defs>
+
+        <!-- ===================== 泳道背景 ===================== -->
+        <rect x="48" y="42" width="444" height="1058" rx="14" fill="#f1f5fa" stroke="#d6e0ea"></rect>
+        <rect x="748" y="42" width="444" height="1058" rx="14" fill="#eef6f4" stroke="#d3e4df"></rect>
+
+        <text x="270" y="74" text-anchor="middle" font-size="14" font-weight="700" fill="#35618c">服务端 Server（被动打开）</text>
+        <text x="970" y="74" text-anchor="middle" font-size="14" font-weight="700" fill="#2f7a6f">客户端 Client（主动打开）</text>
+
+        <!-- ===================== 服务端节点 ===================== -->
+        <!-- socket() -->
+        <g>
+          <rect x="96" y="104" width="348" height="74" rx="10" fill="#ffffff" stroke="#dbe3ea"></rect>
+          <rect x="96" y="116" width="4" height="50" rx="2" fill="#35618c"></rect>
+          <text x="118" y="131" font-size="15" font-weight="700" fill="#16324a">socket()</text>
+          <text x="118" y="151" font-size="10.5" fill="#5a6b7b">创建套接字，指定 SOCK_STREAM</text>
+          <rect x="118" y="158" width="76" height="18" rx="9" fill="#edf1f5" stroke="#dbe3ea"></rect>
+          <text x="156" y="171" text-anchor="middle" font-size="9.5" fill="#254158">CLOSED</text>
+        </g>
+        <line x1="270" y1="178" x2="270" y2="216" stroke="#8aa2b6" stroke-width="1.4" marker-end="url(#arrowDown)"></line>
+
+        <!-- bind() -->
+        <g>
+          <rect x="96" y="224" width="348" height="74" rx="10" fill="#ffffff" stroke="#dbe3ea"></rect>
+          <rect x="96" y="236" width="4" height="50" rx="2" fill="#35618c"></rect>
+          <text x="118" y="251" font-size="15" font-weight="700" fill="#16324a">bind()</text>
+          <text x="118" y="271" font-size="10.5" fill="#5a6b7b">绑定 IP:端口（服务端必须显式绑定）</text>
+          <rect x="118" y="278" width="132" height="18" rx="9" fill="#edf1f5" stroke="#dbe3ea"></rect>
+          <text x="184" y="291" text-anchor="middle" font-size="9.5" fill="#254158">CLOSED（仍无连接）</text>
+        </g>
+        <line x1="270" y1="298" x2="270" y2="336" stroke="#8aa2b6" stroke-width="1.4" marker-end="url(#arrowDown)"></line>
+
+        <!-- listen() -->
+        <g>
+          <rect x="96" y="344" width="348" height="74" rx="10" fill="#ffffff" stroke="#dbe3ea"></rect>
+          <rect x="96" y="356" width="4" height="50" rx="2" fill="#35618c"></rect>
+          <text x="118" y="371" font-size="15" font-weight="700" fill="#16324a">listen()</text>
+          <text x="118" y="391" font-size="10.5" fill="#5a6b7b">转为被动监听，维护连接队列</text>
+          <rect x="118" y="398" width="66" height="18" rx="9" fill="#edf1f5" stroke="#dbe3ea"></rect>
+          <text x="151" y="411" text-anchor="middle" font-size="9.5" fill="#254158">LISTEN</text>
+        </g>
+        <line x1="270" y1="418" x2="270" y2="552" stroke="#8aa2b6" stroke-width="1.4" marker-end="url(#arrowDown)"></line>
+        <text x="282" y="470" font-size="9.5" fill="#7d8fa0">阻塞等待新连接</text>
+        <text x="282" y="484" font-size="9.5" fill="#7d8fa0">（连接在队列中完成后）</text>
+        <text x="282" y="498" font-size="9.5" fill="#7d8fa0">accept() 才返回</text>
+
+        <!-- accept() -->
+        <g>
+          <rect x="96" y="560" width="348" height="74" rx="10" fill="#ffffff" stroke="#dbe3ea"></rect>
+          <rect x="96" y="572" width="4" height="50" rx="2" fill="#35618c"></rect>
+          <text x="118" y="587" font-size="15" font-weight="700" fill="#16324a">accept()</text>
+          <text x="118" y="607" font-size="10.5" fill="#5a6b7b">从已完成队列取出连接，返回新 fd</text>
+          <rect x="118" y="614" width="146" height="18" rx="9" fill="#edf1f5" stroke="#dbe3ea"></rect>
+          <text x="191" y="627" text-anchor="middle" font-size="9.5" fill="#254158">ESTABLISHED（connfd）</text>
+          <!-- 标记 ② -->
+          <circle cx="426" cy="576" r="10" fill="#fdf4ee" stroke="#e2c3ad"></circle>
+          <text x="426" y="580" text-anchor="middle" font-size="11" font-weight="700" fill="#8a4a30">2</text>
+        </g>
+        <line x1="270" y1="634" x2="270" y2="682" stroke="#8aa2b6" stroke-width="1.4" marker-end="url(#arrowDown)"></line>
+
+        <!-- recv()/send() -->
+        <g>
+          <rect x="96" y="690" width="348" height="74" rx="10" fill="#ffffff" stroke="#dbe3ea"></rect>
+          <rect x="96" y="702" width="4" height="50" rx="2" fill="#35618c"></rect>
+          <text x="118" y="717" font-size="15" font-weight="700" fill="#16324a">recv() / send()</text>
+          <text x="118" y="737" font-size="10.5" fill="#5a6b7b">阻塞读写，处理 EOF 与部分发送</text>
+          <rect x="118" y="744" width="98" height="18" rx="9" fill="#edf1f5" stroke="#dbe3ea"></rect>
+          <text x="167" y="757" text-anchor="middle" font-size="9.5" fill="#254158">ESTABLISHED</text>
+          <!-- 标记 ③ -->
+          <circle cx="426" cy="706" r="10" fill="#fdf4ee" stroke="#e2c3ad"></circle>
+          <text x="426" y="710" text-anchor="middle" font-size="11" font-weight="700" fill="#8a4a30">3</text>
+        </g>
+        <line x1="270" y1="764" x2="270" y2="1002" stroke="#8aa2b6" stroke-width="1.4" marker-end="url(#arrowDown)"></line>
+        <text x="282" y="880" font-size="9.5" fill="#7d8fa0">recv() 返回 0（EOF）</text>
+        <text x="282" y="894" font-size="9.5" fill="#7d8fa0">之后才 close()</text>
+
+        <!-- close() 服务端 -->
+        <g>
+          <rect x="96" y="1010" width="348" height="74" rx="10" fill="#ffffff" stroke="#dbe3ea"></rect>
+          <rect x="96" y="1022" width="4" height="50" rx="2" fill="#35618c"></rect>
+          <text x="118" y="1037" font-size="15" font-weight="700" fill="#16324a">close()</text>
+          <text x="118" y="1057" font-size="10.5" fill="#5a6b7b">关闭 connfd，被动侧发出 FIN</text>
+          <rect x="118" y="1064" width="212" height="18" rx="9" fill="#edf1f5" stroke="#dbe3ea"></rect>
+          <text x="224" y="1077" text-anchor="middle" font-size="9.5" fill="#254158">CLOSE_WAIT → LAST_ACK → CLOSED</text>
+        </g>
+
+        <!-- ===================== 客户端节点 ===================== -->
+        <g>
+          <rect x="796" y="104" width="348" height="74" rx="10" fill="#ffffff" stroke="#dbe3ea"></rect>
+          <rect x="796" y="116" width="4" height="50" rx="2" fill="#2f7a6f"></rect>
+          <text x="818" y="131" font-size="15" font-weight="700" fill="#16324a">socket()</text>
+          <text x="818" y="151" font-size="10.5" fill="#5a6b7b">创建套接字，指定 SOCK_STREAM</text>
+          <rect x="818" y="158" width="76" height="18" rx="9" fill="#edf1f5" stroke="#dbe3ea"></rect>
+          <text x="856" y="171" text-anchor="middle" font-size="9.5" fill="#254158">CLOSED</text>
+        </g>
+        <line x1="970" y1="178" x2="970" y2="336" stroke="#7fb3a8" stroke-width="1.4" marker-end="url(#arrowDown)"></line>
+
+        <!-- connect() -->
+        <g>
+          <rect x="796" y="344" width="348" height="74" rx="10" fill="#ffffff" stroke="#dbe3ea"></rect>
+          <rect x="796" y="356" width="4" height="50" rx="2" fill="#2f7a6f"></rect>
+          <text x="818" y="371" font-size="15" font-weight="700" fill="#16324a">connect()</text>
+          <text x="818" y="391" font-size="10.5" fill="#5a6b7b">主动发起连接，阻塞至握手完成</text>
+          <rect x="818" y="398" width="158" height="18" rx="9" fill="#edf1f5" stroke="#dbe3ea"></rect>
+          <text x="897" y="411" text-anchor="middle" font-size="9.5" fill="#254158">SYN_SENT → ESTABLISHED</text>
+        </g>
+        <line x1="970" y1="418" x2="970" y2="682" stroke="#7fb3a8" stroke-width="1.4" marker-end="url(#arrowDown)"></line>
+        <text x="982" y="520" font-size="9.5" fill="#7d8fa0">连接建立后可全双工收发</text>
+
+        <!-- send()/recv() -->
+        <g>
+          <rect x="796" y="690" width="348" height="74" rx="10" fill="#ffffff" stroke="#dbe3ea"></rect>
+          <rect x="796" y="702" width="4" height="50" rx="2" fill="#2f7a6f"></rect>
+          <text x="818" y="717" font-size="15" font-weight="700" fill="#16324a">send() / recv()</text>
+          <text x="818" y="737" font-size="10.5" fill="#5a6b7b">阻塞读写，处理边界与部分发送</text>
+          <rect x="818" y="744" width="98" height="18" rx="9" fill="#edf1f5" stroke="#dbe3ea"></rect>
+          <text x="867" y="757" text-anchor="middle" font-size="9.5" fill="#254158">ESTABLISHED</text>
+          <!-- 标记 ④ -->
+          <circle cx="1126" cy="706" r="10" fill="#fdf4ee" stroke="#e2c3ad"></circle>
+          <text x="1126" y="710" text-anchor="middle" font-size="11" font-weight="700" fill="#8a4a30">4</text>
+        </g>
+        <line x1="970" y1="764" x2="970" y2="882" stroke="#7fb3a8" stroke-width="1.4" marker-end="url(#arrowDown)"></line>
+
+        <!-- close() 客户端（主动关闭方） -->
+        <g>
+          <rect x="796" y="890" width="348" height="74" rx="10" fill="#ffffff" stroke="#dbe3ea"></rect>
+          <rect x="796" y="902" width="4" height="50" rx="2" fill="#2f7a6f"></rect>
+          <text x="818" y="917" font-size="15" font-weight="700" fill="#16324a">close()</text>
+          <text x="818" y="937" font-size="10.5" fill="#5a6b7b">关闭套接字，主动发起挥手</text>
+          <rect x="818" y="944" width="230" height="18" rx="9" fill="#edf1f5" stroke="#dbe3ea"></rect>
+          <text x="933" y="957" text-anchor="middle" font-size="9.5" fill="#254158">FIN_WAIT_1 → FIN_WAIT_2 → TIME_WAIT</text>
+          <!-- 标记 ⑤ -->
+          <circle cx="1126" cy="906" r="10" fill="#fdf4ee" stroke="#e2c3ad"></circle>
+          <text x="1126" y="910" text-anchor="middle" font-size="11" font-weight="700" fill="#8a4a30">5</text>
+        </g>
+
+        <text x="970" y="1010" text-anchor="middle" font-size="10.5" fill="#7d8fa0">TIME_WAIT 结束后才真正 CLOSED（Linux 约 60 s）</text>
+        <text x="970" y="1028" text-anchor="middle" font-size="10.5" fill="#7d8fa0">期间四元组不可复用，用于兜住重传的 FIN</text>
+
+        <!-- ===================== 三次握手 ===================== -->
+        <text x="620" y="416" text-anchor="middle" font-size="12" font-weight="700" fill="#35618c">① 三次握手</text>
+
+        <line x1="740" y1="444" x2="500" y2="444" stroke="#35618c" stroke-width="1.6" marker-end="url(#arrowLeft)"></line>
+        <text x="620" y="438" text-anchor="middle" font-size="10.5" fill="#254158">SYN　seq=x</text>
+
+        <line x1="500" y1="474" x2="740" y2="474" stroke="#35618c" stroke-width="1.6" marker-end="url(#arrowRight)"></line>
+        <text x="620" y="468" text-anchor="middle" font-size="10.5" fill="#254158">SYN+ACK　seq=y, ack=x+1</text>
+
+        <line x1="740" y1="504" x2="500" y2="504" stroke="#35618c" stroke-width="1.6" marker-end="url(#arrowLeft)"></line>
+        <text x="620" y="498" text-anchor="middle" font-size="10.5" fill="#254158">ACK　ack=y+1</text>
+
+        <text x="620" y="536" text-anchor="middle" font-size="9.5" fill="#7d8fa0">握手完成后 accept() 才返回</text>
+
+        <!-- ===================== 四次挥手 ===================== -->
+        <text x="620" y="872" text-anchor="middle" font-size="12" font-weight="700" fill="#a8642f">② 四次挥手</text>
+
+        <line x1="740" y1="902" x2="500" y2="902" stroke="#a8642f" stroke-width="1.6" marker-end="url(#arrowLeftW)"></line>
+        <text x="620" y="896" text-anchor="middle" font-size="10.5" fill="#6a4b33">FIN　seq=u</text>
+
+        <line x1="500" y1="932" x2="740" y2="932" stroke="#a8642f" stroke-width="1.6" marker-end="url(#arrowRightW)"></line>
+        <text x="620" y="926" text-anchor="middle" font-size="10.5" fill="#6a4b33">ACK　ack=u+1</text>
+
+        <line x1="500" y1="962" x2="740" y2="962" stroke="#a8642f" stroke-width="1.6" marker-end="url(#arrowRightW)"></line>
+        <text x="620" y="956" text-anchor="middle" font-size="10.5" fill="#6a4b33">FIN　seq=w（服务端数据发完）</text>
+
+        <line x1="740" y1="992" x2="500" y2="992" stroke="#a8642f" stroke-width="1.6" marker-end="url(#arrowLeftW)"></line>
+        <text x="620" y="986" text-anchor="middle" font-size="10.5" fill="#6a4b33">ACK　ack=w+1</text>
+
+        <!-- 标记 ① -->
+        <circle cx="426" cy="360" r="10" fill="#fdf4ee" stroke="#e2c3ad"></circle>
+        <text x="426" y="364" text-anchor="middle" font-size="11" font-weight="700" fill="#8a4a30">1</text>
+
+        <!-- 底部提示 -->
+        <text x="620" y="1136" text-anchor="middle" font-size="11.5" fill="#5a6b7b">↓ accept() 之后的三条并发处理路径：见下方分支区</text>
+      </svg>
+    </div>
+  </figure>
+
+  <section>
+    <h2>accept() 之后的三种并发模型</h2>
+    <p class="lead">三条路径解决的是同一个问题：一个监听 fd 要同时服务多个连接。差别在于「谁来做调度、单机能扛多少连接」。</p>
+    <div class="grid">
+      <article class="card">
+        <span class="tag">路径 A</span>
+        <h3>多线程 / 多进程</h3>
+        <p>accept() 拿到 connfd 后交给独立线程或进程（或线程池 / 进程池），<strong>一个连接一条执行流</strong>。阻塞式代码可直接复用，适合连接数不大、单连接耗时长的场景（文件传输、数据库代理）。</p>
+      </article>
+      <article class="card">
+        <span class="tag">路径 B</span>
+        <h3>IO 多路复用（select / epoll）</h3>
+        <p>少量线程用事件循环同时监控大量 fd，<strong>就绪才处理</strong>。适合连接多、单次交互轻的高并发网关与聊天服务；Linux 首选 epoll（select 受 FD_SETSIZE 限制且需线性扫描）。</p>
+      </article>
+      <article class="card">
+        <span class="tag">路径 C</span>
+        <h3>协程（goroutine / asyncio）</h3>
+        <p>用<strong>同步写法获得异步调度</strong>，阻塞点由运行时让出。适合海量并发 + 业务逻辑复杂的服务；注意一次真正的阻塞调用（如同步 IO、长计算）会卡住整个调度线程。</p>
+      </article>
+    </div>
+  </section>
+
+  <section>
+    <h2>关键坑（对应图中 ①–⑤）</h2>
+    <p class="lead">这五处是最容易在联调与压测中翻车的地方，编号与图上标记一致。</p>
+    <div class="pitfalls">
+      <div class="pit">
+        <span class="num">1</span>
+        <div>
+          <h3>backlog 不是「最大连接数」</h3>
+          <p><code>listen(fd, backlog)</code> 只是内核连接队列的上限提示，实际取 <code>min(backlog, somaxconn)</code>，并受 <code>tcp_max_syn_backlog</code> 影响。队列满后，握手完成的连接也会被丢弃，表现为「连得上却偶发超时」。</p>
+        </div>
+      </div>
+      <div class="pit">
+        <span class="num">2</span>
+        <div>
+          <h3>accept() 返回的是新 fd</h3>
+          <p>监听 fd 只负责接新连接，永远不用于收发；每次 accept 返回一个独立的 connfd，靠四元组区分。忘记 close(connfd) 会累积 CLOSE_WAIT 并最终耗尽 fd。</p>
+        </div>
+      </div>
+      <div class="pit">
+        <span class="num">3</span>
+        <div>
+          <h3>TCP 没有消息边界</h3>
+          <p>一次 recv 可能拿到半条消息，也可能拿到多条拼在一起。必须由应用层用「定长 / 分隔符 / 长度字段」界定边界，不能假设「一次 recv = 一条消息」。</p>
+        </div>
+      </div>
+      <div class="pit">
+        <span class="num">4</span>
+        <div>
+          <h3>send() 可能只发出去一部分</h3>
+          <p>返回值是实际写入的字节数，可能小于请求长度（发送缓冲满、被信号打断、非阻塞返回 EAGAIN）。必须按返回值推进偏移并循环发送，直到写完或明确失败。</p>
+        </div>
+      </div>
+      <div class="pit">
+        <span class="num">5</span>
+        <div>
+          <h3>TIME_WAIT 在主动关闭方</h3>
+          <p>谁先 close() 谁进 TIME_WAIT（Linux 固定等待 60 s）。TIME_WAIT 多说明本进程在主动关连接，一般是正常现象；大量 CLOSE_WAIT 才是「代码没 close」的信号。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    技术基准：RFC 9293（取代 RFC 793）、Linux 内核 TCP 实现。状态徽标指内核状态，与 API 调用一一对应：<code>listen() → LISTEN</code>，<code>connect() → SYN_SENT → ESTABLISHED</code>，<code>close()</code> 的走向取决于谁是主动关闭方。
+  </footer>
+
+</div>
+
+<script>
+(function () {
+  var svg = document.querySelector('svg.chart');
+  var wrap = document.querySelector('.chart-wrap');
+  var buttons = document.querySelectorAll('.zoom button');
+  if (!svg) return;
+
+  function setZoom(value) {
+    if (value === 'fit') {
+      svg.style.minWidth = '0';
+      svg.style.width = '100%';
+    } else {
+      svg.style.minWidth = value + 'px';
+      svg.style.width = Math.max(parseInt(value, 10), wrap.clientWidth) + 'px';
+    }
+    Array.prototype.forEach.call(buttons, function (b) {
+      b.classList.toggle('active', b.getAttribute('data-zoom') === String(value));
+    });
+  }
+
+  Array.prototype.forEach.call(buttons, function (b) {
+    b.addEventListener('click', function () { setZoom(b.getAttribute('data-zoom')); });
+  });
+})();
+</script>
+</body>
+</html>

@@ -34,6 +34,16 @@ window.NOTES = [
     minutes: '约 10 分钟'
   },
   {
+    id: 'tcp-flow',
+    title: 'TCP 开发流程图',
+    kicker: '网络协议 · 图解',
+    desc: '服务端与客户端两条泳道，把 socket/bind/listen/accept 与 connect/close 对应到内核状态迁移，并标出 ①–⑤ 五处最容易翻车的坑。',
+    href: 'notes/tcp-flow-chart.html',
+    tags: ['网络', '传输层', 'TCP', '图解'],
+    added: '2026-11-06',
+    minutes: '1 张流程图'
+  },
+  {
     id: 'tcp',
     title: 'TCP 协议学习笔记',
     kicker: '网络协议 · 学习笔记',

@@ -16,7 +16,9 @@
   var links = {};
   document.querySelectorAll('[data-target]').forEach(function (a) { links[a.dataset.target] = a; });
 
-  /* 主题 */
+  /* 主题
+     html[data-theme-lock="light"] 的页面固定浅色：不读偏好、不绑定切换按钮 */
+  var themeLocked = root.getAttribute('data-theme-lock') === 'light';
   function applyTheme(t) {
     root.setAttribute('data-theme', t);
     document.querySelectorAll('.theme-label').forEach(function (el) {
@@ -26,17 +28,21 @@
       b.setAttribute('aria-pressed', t === 'dark');
     });
   }
-  var stored = null;
-  try { stored = localStorage.getItem(KEY); } catch (e) {}
-  if (!stored) stored = root.getAttribute('data-theme') || 'light';
-  applyTheme(stored);
-  document.querySelectorAll('.theme-toggle').forEach(function (btn) {
-    btn.addEventListener('click', function () {
-      var next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-      applyTheme(next);
-      try { localStorage.setItem(KEY, next); } catch (e) {}
+  if (themeLocked) {
+    applyTheme('light');
+  } else {
+    var stored = null;
+    try { stored = localStorage.getItem(KEY); } catch (e) {}
+    if (!stored) stored = root.getAttribute('data-theme') || 'light';
+    applyTheme(stored);
+    document.querySelectorAll('.theme-toggle').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+        applyTheme(next);
+        try { localStorage.setItem(KEY, next); } catch (e) {}
+      });
     });
-  });
+  }
 
   /* 滚动高亮 */
   var current = null;
