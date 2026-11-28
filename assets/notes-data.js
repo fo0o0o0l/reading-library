@@ -14,6 +14,15 @@
    ========================================================================== */
 window.NOTES = [
   {
+    id: 'mysql-index',
+    title: 'MySQL 索引系统学习笔记',
+    kicker: '数据库 · 索引专题',
+    desc: '从建索引、EXPLAIN 实操讲到 B+ 树、最左前缀、回表与覆盖索引，把「会写」和「知道为什么快」连成一条线。',
+    href: 'notes/mysql-index-notes.html',
+    tags: ['数据库', 'MySQL', '索引', '面试'],
+    added: '2026-11-28',
+    minutes: '深度长文'
+  },  {
     id: 'mysql',
     title: 'MySQL 数据库操作笔记（九篇合集）',
     kicker: '数据库 · 笔记合集',
