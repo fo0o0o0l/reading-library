@@ -141,8 +141,7 @@ pre.ascii code{white-space:pre;font-size:13px;line-height:1.55}
 .tk-arrow{color:var(--tk-opt)}
 
 /* ---------- 表格 ---------- */
-.table-wrap{overflow-x:auto;margin:18px 0;border:1px solid var(--border);border-radius:10px;background:var(--surface);box-shadow:var(--shadow)}
-table{border-collapse:collapse;width:100%;min-width:600px;font-size:14px;line-height:1.65}
+.table-wrap{overflow-x:auto;margin:18px 0;border:1px solid var(--border);border-radius:10px;background:var(--surface);box-shadow:var(--shadow)}table{border-collapse:collapse;width:100%;min-width:600px;font-size:14px;line-height:1.65}
 th{background:var(--accent-soft);color:var(--text);font-weight:600;text-align:left;white-space:nowrap}
 th,td{padding:9px 13px;border-bottom:1px solid var(--border-soft);vertical-align:top}
 th:not(:last-child),td:not(:last-child){border-right:1px solid var(--border-soft)}
@@ -195,6 +194,14 @@ td code{font-family:var(--mono);font-size:12.5px;display:inline;background:trans
 .diff-row b{flex:0 0 176px;font-family:var(--mono);font-size:12px;color:var(--warm);font-weight:600;line-height:1.6}
 .diff-row span{flex:1;font-size:13.5px;line-height:1.7}
 
+/* ------------- 首屏加速 -------------
+   长文里大量表格与代码块先跳过渲染，滚到附近才排版；
+   锚点跳转时浏览器会自动为命中的节点恢复渲染，不影响目录跳转 */
+.table-wrap,.codeblock{
+  content-visibility:auto;
+  contain-intrinsic-size:auto 260px;
+}
+
 /* ------------- 响应式 ------------- */
 @media(max-width:1040px){
   #sidebar{transform:translateX(-100%);transition:transform .24s ease;box-shadow:0 0 30px rgba(0,0,0,.14)}
@@ -236,6 +243,7 @@ td code{font-family:var(--mono);font-size:12.5px;display:inline;background:trans
   pre.ascii code{white-space:pre-wrap;font-size:8.6pt;line-height:1.45}
   code{font-size:9pt}
   .table-wrap{overflow:visible;box-shadow:none}
+  .table-wrap,.codeblock{content-visibility:visible}
   table{min-width:0;font-size:9pt}
   .callout{break-inside:avoid}
   a{color:#111!important;text-decoration:none}

@@ -193,6 +193,91 @@
     }
   });
 
+  /* ---------------------- 跳转加速 ----------------------
+     ① 悬停/触摸即预取目标页（rel=prefetch，全平台）
+     ② 支持的浏览器用 Speculation Rules 预渲染（Chrome 系，点开即见正文）
+     ③ 同时预热资料页共用的 note.css / note.js，避免二次 RTT
+     ------------------------------------------------------ */
+  var assetVersion = (document.querySelector('meta[name="asset-version"]') || {}).content || '';
+  var prefetched = {};
+
+  function prefetch(url) {
+    if (!url || prefetched[url]) return;
+    prefetched[url] = 1;
+    var link = document.createElement('link');
+    link.rel = 'prefetch';
+    link.href = url;
+    document.head.appendChild(link);
+  }
+
+  function warmSharedAssets() {
+    if (!assetVersion) return;
+    prefetch('assets/note.css?v=' + assetVersion);
+    prefetch('assets/note.js?v=' + assetVersion);
+  }
+
+  function warmCard(card) {
+    if (!card) return;
+    prefetch(card.getAttribute('href'));
+    warmSharedAssets();
+  }
+
+  // 预渲染：point 到卡片就后台准备好整页
+  if (window.HTMLScriptElement && HTMLScriptElement.supports && HTMLScriptElement.supports('speculationrules')) {
+    try {
+      var rules = document.createElement('script');
+      rules.type = 'speculationrules';
+      rules.textContent = JSON.stringify({
+        prerender: [{ source: 'list', urls: notes.map(function (n) { return n.href; }), eagerness: 'moderate' }]
+      });
+      document.head.appendChild(rules);
+    } catch (e) {}
+  }
+
+  ['pointerenter', 'touchstart', 'focusin'].forEach(function (evt) {
+    listEl.addEventListener(evt, function (e) {
+      warmCard(e.target.closest && e.target.closest('.card'));
+    }, { passive: true });
+  });
+
+  // 空闲时静默预热前两篇 + 共享资源，避开首屏关键路径
+  var idle = window.requestIdleCallback || function (fn) { return setTimeout(fn, 1200); };
+  idle(function () {
+    notes.slice(0, 2).forEach(function (n) { prefetch(n.href); });
+    warmSharedAssets();
+  });
+
+  // 点击即反馈：先画出「打开中…」，下一帧再跳转，避免白屏等待
+  listEl.addEventListener('click', function (e) {
+    var card = e.target.closest && e.target.closest('.card');
+    if (!card || e.defaultPrevented) return;
+    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    var href = card.getAttribute('href');
+    if (!href) return;
+    e.preventDefault();
+    card.classList.add('is-loading');
+    var go = card.querySelector('.card-go');
+    if (go) go.textContent = '打开中…';
+    var bar = document.getElementById('loadbar');
+    if (bar) bar.classList.add('show');
+    warmCard(card);
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () { window.location.href = href; });
+    });
+  });
+
+  // 浏览器「返回」后恢复原样，避免卡片一直停在「打开中…」
+  window.addEventListener('pageshow', function (e) {
+    if (!e.persisted) return;
+    document.querySelectorAll('.card.is-loading').forEach(function (card) {
+      card.classList.remove('is-loading');
+      var go = card.querySelector('.card-go');
+      if (go) go.textContent = '阅读 →';
+    });
+    var bar = document.getElementById('loadbar');
+    if (bar) bar.classList.remove('show');
+  });
+
   renderChips();
   render();
 })();
