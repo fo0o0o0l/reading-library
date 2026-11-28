@@ -105,6 +105,9 @@
 
   notes.forEach(function (n) { listEl.appendChild(buildCard(n)); });
   var cards = Array.prototype.slice.call(listEl.querySelectorAll('.card'));
+  // 以 data-id 建索引，避免依赖「数组顺序 == 卡片顺序」，防止后续增删时错位
+  var cardById = {};
+  cards.forEach(function (card) { cardById[card.getAttribute('data-id')] = card; });
 
   /* ------------------------- 筛选与搜索 ------------------------- */
   var state = { tag: '*', q: '' };
@@ -139,8 +142,9 @@
     var q = state.q.trim();
     var shown = 0;
 
-    notes.forEach(function (n, i) {
-      var card = cards[i];
+    notes.forEach(function (n) {
+      var card = cardById[n.id];
+      if (!card) return;
       var ok = matches(n, state.tag, q);
       card.hidden = !ok;
       if (ok) shown++;

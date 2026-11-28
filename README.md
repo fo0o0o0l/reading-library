@@ -131,6 +131,26 @@ git push
 
 GitHub Pages 会自动重建，通常一两分钟后生效。
 
+### 更新后手机上没变化？（缓存）
+
+GitHub Pages 给静态资源下发的是 `Cache-Control: max-age=600`，也就是浏览器可能把旧版首页、旧版数据文件缓存最多 10 分钟，表现为「明明加了资料，手机上还是旧的卡片」。
+
+处理办法，按顺序试：
+
+1. **等 1–2 分钟再刷新一次**：Pages 重建 + 边缘缓存过期需要一点时间。
+2. **强制刷新**：电脑上 `Ctrl + F5`（Mac 为 `Cmd + Shift + R`）；手机上在浏览器设置里「清除缓存 / 清除网站数据」，或用无痕窗口打开。
+3. **改版本号**（重要更新时推荐）：把 `index.html` 里三处资源引用的 `?v=` 值改成一个新字符串即可，例如：
+
+```html
+<link rel="stylesheet" href="assets/library.css?v=20261201a">
+<script src="assets/notes-data.js?v=20261201a"></script>
+<script src="assets/library.js?v=20261201a"></script>
+```
+
+资料页模板与各资料页里的 `../assets/note.css?v=…`、`../assets/note.js?v=…` 同理。改完重新 `git push`，浏览器会把它当成新文件重新下载。
+
+> 数据文件 `assets/notes-data.js` 是卡片列表的唯一来源。判断线上有没有更新，直接访问 <https://fo0o0o0l.github.io/reading-library/assets/notes-data.js> 看里面有几条 `id:` 最关键。
+
 ### 首次发布（已完成，供重装时参考）
 
 ```powershell
